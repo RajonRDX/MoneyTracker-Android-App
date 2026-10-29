@@ -42,16 +42,12 @@ data class UserSettings(
 ) : Serializable
 
 data class MonthSetup(
-    val id: String = "",
     val yearMonth: String = "",
-    val salary: Double = 0.0,
-    val extraIncome: Double = 0.0,
-    val openingBankBalance: Double = 0.0,
+    val openingBalance: Double = 0.0,
+    val incomeAmount: Double = 0.0,
+    val expectedSavings: Double = 0.0,
     val overallBudgetLimit: Double = 0.0,
-    val extraSpendingLimit: Double = 0.0,
-    val isClosed: Boolean = false,
-    val createdAt: Long = 0L,
-    val updatedAt: Long = 0L
+    val extraSpendingLimit: Double = 0.0
 ) : Serializable
 
 data class ExpenseCategory(
