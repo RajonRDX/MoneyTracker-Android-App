@@ -28,12 +28,12 @@ class MainActivity : FragmentActivity() {
         val authRepo = app.container.authRepository
 
         setContent {
-            var isLocked by remember { mutableStateOf(localPrefs.isLocked) }
+            var isLocked by remember { mutableStateOf(localPrefs.isLocked == true) }
             val isLoggedIn by authRepo.currentUserIdFlow.collectAsStateWithLifecycle(initialValue = authRepo.isLoggedIn)
 
             // If user is logged in and biometric lock is enabled in settings, trigger prompt on resume/start
             LaunchedEffect(isLoggedIn) {
-                if (isLoggedIn && localPrefs.isLocked) {
+                if (isLoggedIn && localPrefs.isLocked == true) {
                     isLocked = true
                 }
             }
