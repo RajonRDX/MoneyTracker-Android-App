@@ -47,7 +47,7 @@ fun AppNavHost(appContainer: AppContainer) {
         }
         composable(NavRoutes.TRANSACTIONS) {
             TransactionsScreen(
-                viewModel = TransactionsViewModel(appContainer.financeRepository, appContainer.localPrefs)
+                viewModel = TransactionsViewModel(appContainer.financeRepository)
             )
         }
         composable(NavRoutes.BUDGET) {
