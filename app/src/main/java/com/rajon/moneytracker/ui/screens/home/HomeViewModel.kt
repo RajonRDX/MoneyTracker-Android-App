@@ -42,10 +42,12 @@ class HomeViewModel(
     val debtsList: StateFlow<List<DebtItem>> = financeRepository.observeDebts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // --- FIXED: Handled null monthSetup safely for brand-new users ---
     val balanceBreakdown: StateFlow<BalanceBreakdown> = combine(
         monthSetup, transactions, savingsDeposits, debtPayments
     ) { setup, txs, deps, pays ->
-        BalanceCalculator.calculate(setup, txs, deps, pays)
+        val safeSetup = setup ?: MonthSetup(yearMonth = _currentYearMonth.value)
+        BalanceCalculator.calculate(safeSetup, txs, deps, pays)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
