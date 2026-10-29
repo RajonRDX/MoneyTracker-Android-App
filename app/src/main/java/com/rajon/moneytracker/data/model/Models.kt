@@ -44,6 +44,9 @@ data class UserSettings(
 data class MonthSetup(
     val yearMonth: String = "",
     val openingBalance: Double = 0.0,
+    val openingBankBalance: Double = 0.0,
+    val salary: Double = 0.0,
+    val extraIncome: Double = 0.0,
     val incomeAmount: Double = 0.0,
     val expectedSavings: Double = 0.0,
     val overallBudgetLimit: Double = 0.0,
