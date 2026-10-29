@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Safe zone is 66x66 centered at (54,54) -> coordinates 24..84 -->
+    <!-- Wallet body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,38C27.8,38 26,39.8 26,42V70C26,72.2 27.8,74 30,74H76C78.2,74 80,72.2 80,70V46C80,43.8 78.2,42 76,42H34V40C34,38.9 34.9,38 36,38H74V34H34C31.8,34 30,35.8 30,38Z" />
+
+    <!-- Wallet clasp -->
+    <path
+        android:fillColor="#80CBC4"
+        android:pathData="M68,52H82V62H68C65.2,62 63,59.8 63,57C63,54.2 65.2,52 68,52Z" />
+    <path
+        android:fillColor="#004D40"
+        android:pathData="M70,57m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
+
+    <!-- Stylized Taka / Coin emblem inside wallet -->
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M46,58m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
+    <!-- Taka 't' crossbar & curve represented cleanly in vector -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M43,51V61C43,63.2 44.8,64.5 47,64.5C49.2,64.5 50.5,63 50.5,61C50.5,59 49,57.8 47,57.8M40.5,54.5H49.5" />
+
+    <!-- Upward growth arrow above wallet -->
+    <path
+        android:strokeColor="#A7FFEB"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M34,32L46,24L54,29L68,19M68,19H60M68,19V27" />
+</vector>

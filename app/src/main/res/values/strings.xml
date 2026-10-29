@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MoneyTracker</string>
+    <string name="notif_channel_reminders_name">Payment &amp; Debt Reminders</string>
+    <string name="notif_channel_reminders_desc">Daily notifications for upcoming and overdue recurring bills and debt installments</string>
+    <string name="notif_channel_budget_name">Budget Overspend Alerts</string>
+    <string name="notif_channel_budget_desc">Instant alerts when your spending exceeds category, extra, or monthly budget limits</string>
+</resources>
