@@ -25,19 +25,19 @@ object AppViewModelProvider {
                 modelClass.isAssignableFrom(AuthViewModel::class.java) ->
                     AuthViewModel(container.authRepository) as T
                 modelClass.isAssignableFrom(HomeViewModel::class.java) ->
-                    HomeViewModel(container.firestoreRepository) as T
+                    HomeViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(TransactionsViewModel::class.java) ->
-                    TransactionsViewModel(container.firestoreRepository, application) as T
+                    TransactionsViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(BudgetViewModel::class.java) ->
-                    BudgetViewModel(container.firestoreRepository) as T
+                    BudgetViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(SavingsViewModel::class.java) ->
-                    SavingsViewModel(container.firestoreRepository) as T
+                    SavingsViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(DebtsViewModel::class.java) ->
-                    DebtsViewModel(container.firestoreRepository) as T
+                    DebtsViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(HistoryViewModel::class.java) ->
-                    HistoryViewModel(container.firestoreRepository) as T
+                    HistoryViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
-                    SettingsViewModel(container.authRepository, container.firestoreRepository, application) as T
+                    SettingsViewModel(container.financeRepository, container.localPrefs) as T
                 else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
             }
         }

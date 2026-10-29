@@ -3,6 +3,9 @@ package com.rajon.moneytracker.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -54,7 +57,7 @@ fun MonthSelectorBar(
     ) {
         IconButton(onClick = onPrevMonth) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowLeft,
+                imageVector = Icons.Default.KeyboardArrowLeft,
                 contentDescription = "Previous Month"
             )
         }
@@ -64,7 +67,7 @@ fun MonthSelectorBar(
         )
         IconButton(onClick = onNextMonth) {
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowRight,
+                imageVector = Icons.Default.KeyboardArrowRight,
                 contentDescription = "Next Month"
             )
         }
