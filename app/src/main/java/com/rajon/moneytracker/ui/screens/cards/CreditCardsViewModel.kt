@@ -29,6 +29,9 @@ class CreditCardsViewModel(
     private val financeRepository: FinanceRepository
 ) : ViewModel() {
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     val settings: StateFlow<UserSettings> = financeRepository.observeSettings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserSettings())
 
@@ -48,37 +51,30 @@ class CreditCardsViewModel(
         val currentYM = DateUtils.getCurrentYearMonth()
 
         cardList.map { card ->
-            // Match transactions linked to this card (or fallback to single card if legacy CARD tx has no linkedCardId)
             val cardTxs = txs.filter { tx ->
                 tx.linkedCardId == card.id || (tx.linkedCardId == null && tx.paymentSource == PaymentSource.CARD.name && cardList.size == 1)
             }.sortedByDescending { it.dateMillis }
 
-            // 1. All-time purchases on this card
             val totalPurchases = cardTxs
                 .filter { it.type == TransactionType.EXPENSE.name && !it.isCardBillPayment }
                 .sumOf { it.amount }
 
-            // 2. All-time cash loans taken from this card
             val totalLoansTaken = cardTxs
                 .filter { it.type == TransactionType.CARD_LOAN.name }
                 .sumOf { it.amount }
 
-            // 3. All-time bill repayments made toward this card
             val totalPaymentsMade = cardTxs
                 .filter { it.isCardBillPayment || it.type == TransactionType.CARD_PAYMENT.name }
                 .sumOf { it.amount }
 
-            // Total Current Debt = Initial Previous Debt + Purchases + Loans - Payments
             val totalDebt = (card.previousDebt + totalPurchases + totalLoansTaken - totalPaymentsMade).coerceAtLeast(0.0)
             val available = (card.creditLimit - totalDebt).coerceAtLeast(0.0)
             val utilPct = if (card.creditLimit > 0.0) ((totalDebt / card.creditLimit) * 100f).toFloat().coerceIn(0f, 100f) else 0f
 
-            // Current month's standard purchases
             val thisMonthPurchases = cardTxs
                 .filter { it.yearMonth == currentYM && it.type == TransactionType.EXPENSE.name && !it.isCardBillPayment }
                 .sumOf { it.amount }
 
-            // Active EMI / monthly installment calculation for card loans
             val monthlyEmi = cardTxs
                 .filter { it.type == TransactionType.CARD_LOAN.name && it.emiMonths > 0 }
                 .sumOf { it.amount / it.emiMonths }
@@ -91,7 +87,6 @@ class CreditCardsViewModel(
                 .filter { it.yearMonth == currentYM && (it.isCardBillPayment || it.type == TransactionType.CARD_PAYMENT.name) }
                 .sumOf { it.amount }
 
-            // Recommended Next Payment Due (Statement purchases + Monthly Loan EMI + Previous Unpaid Carryover - Paid this month)
             val rawStatementDue = if (monthlyEmi > 0.0) {
                 (card.previousDebt + thisMonthPurchases + monthlyEmi + nonEmiLoans - thisMonthPayments).coerceIn(0.0, totalDebt)
             } else {
@@ -99,7 +94,6 @@ class CreditCardsViewModel(
             }
             val estimatedDue = if (rawStatementDue > 0.0) rawStatementDue else totalDebt
 
-            // Minimum Due ( typically 5% of total debt or 500 BDT, capped at totalDebt )
             val minDue = if (totalDebt > 0.0) {
                 (totalDebt * (card.minimumDuePercent / 100.0)).coerceAtLeast(500.0).coerceAtMost(totalDebt)
             } else 0.0
@@ -121,6 +115,8 @@ class CreditCardsViewModel(
                 cardTransactions = cardTxs
             )
         }
+    }.onEach {
+        _isLoading.value = false
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun saveCard(card: CreditCard) {
@@ -135,17 +131,7 @@ class CreditCardsViewModel(
         }
     }
 
-    /**
-     * Records a purchase made using the Credit Card.
-     * Increases card debt and counts as a monthly expense without reducing Bank balance.
-     */
-    fun recordCardPurchase(
-        card: CreditCard,
-        amount: Double,
-        categoryId: String,
-        categoryName: String,
-        note: String
-    ) {
+    fun recordCardPurchase(card: CreditCard, amount: Double, categoryId: String, categoryName: String, note: String) {
         viewModelScope.launch {
             val tx = Transaction(
                 id = UUID.randomUUID().toString(),
@@ -165,18 +151,7 @@ class CreditCardsViewModel(
         }
     }
 
-    /**
-     * Records a Loan / Cash Advance taken from the Credit Card.
-     * Increases card debt and optionally deposits the funds into Bank or Cash in Hand.
-     */
-    fun recordCardLoan(
-        card: CreditCard,
-        principalAmount: Double,
-        processingFeeOrInterest: Double,
-        emiMonths: Int,
-        depositToSource: String, // "BANK", "CASH", or "NONE"
-        note: String
-    ) {
+    fun recordCardLoan(card: CreditCard, principalAmount: Double, processingFeeOrInterest: Double, emiMonths: Int, depositToSource: String, note: String) {
         viewModelScope.launch {
             val totalLoanLiability = principalAmount + processingFeeOrInterest
             val tx = Transaction(
@@ -199,16 +174,7 @@ class CreditCardsViewModel(
         }
     }
 
-    /**
-     * Pays down the Credit Card bill from Bank, Cash, bKash, or Nagad.
-     * Deducts from your chosen payment source and reduces Credit Card debt!
-     */
-    fun payCardBill(
-        card: CreditCard,
-        amount: Double,
-        paidFromSource: String, // "BANK", "CASH", "BKASH", "NAGAD"
-        note: String
-    ) {
+    fun payCardBill(card: CreditCard, amount: Double, paidFromSource: String, note: String) {
         viewModelScope.launch {
             val tx = Transaction(
                 id = UUID.randomUUID().toString(),
@@ -237,8 +203,6 @@ class CreditCardsViewModel(
 
     private fun calculateNextPaymentDate(dueDay: Int): Pair<String, Int> {
         val now = Calendar.getInstance()
-        val todayYear = now.get(Calendar.YEAR)
-        val todayMonth = now.get(Calendar.MONTH) // 0-based
         val todayDay = now.get(Calendar.DAY_OF_MONTH)
 
         val dueCal = Calendar.getInstance().apply {

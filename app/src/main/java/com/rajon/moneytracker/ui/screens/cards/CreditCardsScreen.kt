@@ -37,6 +37,7 @@ fun CreditCardsScreen(
     viewModel: CreditCardsViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val summaries by viewModel.cardSummaries.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
 
@@ -126,67 +127,81 @@ fun CreditCardsScreen(
                 }
             }
 
-            if (summaries.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Column(
+            when {
+                isLoading -> {
+                    item {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(28.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .padding(vertical = 48.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                Icons.Default.CreditCard,
-                                contentDescription = null,
-                                modifier = Modifier.size(56.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "No Credit Cards Added Yet",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Add your credit card (including any previous unpaid balance) to track card purchases, cash loans, next payment dates, and bill adjustments.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { showAddEditCardDialog = true }) {
-                                Icon(Icons.Default.Add, contentDescription = null)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Add Your First Credit Card")
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+                summaries.isEmpty() -> {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(28.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.CreditCard,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "No Credit Cards Added Yet",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Add your credit card (including any previous unpaid balance) to track card purchases, cash loans, next payment dates, and bill adjustments.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(onClick = { showAddEditCardDialog = true }) {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Add Your First Credit Card")
+                                }
                             }
                         }
                     }
                 }
-            } else {
-                items(summaries, key = { it.card.id }) { summary ->
-                    CreditCardDetailItem(
-                        summary = summary,
-                        currencySymbol = settings.currencySymbol,
-                        onBuyClick = { purchaseCard = summary.card },
-                        onLoanClick = { loanCard = summary.card },
-                        onPayBillClick = { paymentCardSummary = summary },
-                        onEditCard = {
-                            editingCard = summary.card
-                            showAddEditCardDialog = true
-                        },
-                        onDeleteCard = { deletingCard = summary.card },
-                        onDeleteTx = { txId -> viewModel.deleteCardTransaction(txId) }
-                    )
+                else -> {
+                    items(summaries, key = { it.card.id }) { summary ->
+                        CreditCardDetailItem(
+                            summary = summary,
+                            currencySymbol = settings.currencySymbol,
+                            onBuyClick = { purchaseCard = summary.card },
+                            onLoanClick = { loanCard = summary.card },
+                            onPayBillClick = { paymentCardSummary = summary },
+                            onEditCard = {
+                                editingCard = summary.card
+                                showAddEditCardDialog = true
+                            },
+                            onDeleteCard = { deletingCard = summary.card },
+                            onDeleteTx = { txId -> viewModel.deleteCardTransaction(txId) }
+                        )
+                    }
                 }
             }
         }
     }
 
-    // 1. Add / Edit Credit Card Dialog
     if (showAddEditCardDialog) {
         AddEditCreditCardDialog(
             initial = editingCard,
@@ -202,7 +217,6 @@ fun CreditCardsScreen(
         )
     }
 
-    // 2. Delete Credit Card Confirmation
     if (deletingCard != null) {
         AlertDialog(
             onDismissRequest = { deletingCard = null },
@@ -225,7 +239,6 @@ fun CreditCardsScreen(
         )
     }
 
-    // 3. Record Card Purchase Dialog
     if (purchaseCard != null) {
         CardPurchaseDialog(
             card = purchaseCard!!,
@@ -238,7 +251,6 @@ fun CreditCardsScreen(
         )
     }
 
-    // 4. Take Loan from Credit Card Dialog
     if (loanCard != null) {
         CardLoanDialog(
             card = loanCard!!,
@@ -250,7 +262,6 @@ fun CreditCardsScreen(
         )
     }
 
-    // 5. Pay Credit Card Bill Dialog
     if (paymentCardSummary != null) {
         PayCardBillDialog(
             summary = paymentCardSummary!!,
@@ -292,7 +303,6 @@ fun CreditCardDetailItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Top Metallic-style Card Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -384,7 +394,6 @@ fun CreditCardDetailItem(
                 }
             }
 
-            // Payment Planner & Due Date Section
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -437,7 +446,6 @@ fun CreditCardDetailItem(
                     }
                 }
 
-                // Debt Breakdown Row (Purchases vs Loans vs Monthly EMI)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -471,7 +479,6 @@ fun CreditCardDetailItem(
                     }
                 }
 
-                // 3 Action Buttons: Buy Stuff, Take Loan, Pay Bill
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -506,7 +513,6 @@ fun CreditCardDetailItem(
                     }
                 }
 
-                // Toggleable Card Transaction History
                 if (summary.cardTransactions.isNotEmpty() || card.previousDebt > 0.0) {
                     TextButton(
                         onClick = { showHistory = !showHistory },
