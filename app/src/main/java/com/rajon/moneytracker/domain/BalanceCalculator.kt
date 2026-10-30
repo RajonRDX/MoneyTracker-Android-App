@@ -9,11 +9,6 @@ import com.rajon.moneytracker.data.model.TransactionType
 
 data class BalanceBreakdown(
     val openingBankBalance: Double,
-    val openingCashBalance: Double,
-    val setupSalary: Double,
-    val setupExtraIncome: Double,
-    val transactionIncomeBank: Double,
-    val transactionIncomeCash: Double,
     val totalIncome: Double,
     val totalLoansTaken: Double,
     val totalRepaymentsReceived: Double,
@@ -29,6 +24,11 @@ data class BalanceBreakdown(
     val totalCashDebtPayments: Double,
     val cashInHand: Double,
     val totalSpent: Double,
+    val openingCashBalance: Double = 0.0,
+    val setupSalary: Double = 0.0,
+    val setupExtraIncome: Double = 0.0,
+    val transactionIncomeBank: Double = 0.0,
+    val transactionIncomeCash: Double = 0.0,
     val isCarriedOverFromPrevMonth: Boolean = false
 )
 
@@ -43,15 +43,9 @@ object BalanceCalculator {
         carriedOverSalary: Double = 0.0,
         isCarriedOver: Boolean = false
     ): BalanceBreakdown {
-        val openingBank = if (monthSetup != null) monthSetup.openingBankBalance else carriedOverBankBalance
-        val openingCash = if (monthSetup != null) monthSetup.openingBalance else carriedOverCashBalance
-        val salary = if (monthSetup != null && (monthSetup.salary > 0.0 || transactions.any { it.type == TransactionType.INCOME.name })) {
-            monthSetup.salary
-        } else if (monthSetup != null) {
-            monthSetup.salary
-        } else {
-            carriedOverSalary
-        }
+        val openingBank = monthSetup?.openingBankBalance ?: carriedOverBankBalance
+        val openingCash = monthSetup?.openingBalance ?: carriedOverCashBalance
+        val salary = monthSetup?.salary ?: carriedOverSalary
         val extraInc = monthSetup?.extraIncome ?: 0.0
 
         var loansTaken = 0.0
@@ -114,7 +108,7 @@ object BalanceCalculator {
             if (dep.takeFromBank && !dep.isWithdrawal) {
                 savingsFromBank += dep.amount
             } else if (dep.takeFromBank && dep.isWithdrawal) {
-                savingsFromBank -= dep.amount
+                withdrawals -= dep.amount
             }
         }
 
@@ -128,11 +122,6 @@ object BalanceCalculator {
 
         return BalanceBreakdown(
             openingBankBalance = openingBank,
-            openingCashBalance = openingCash,
-            setupSalary = salary,
-            setupExtraIncome = extraInc,
-            transactionIncomeBank = txIncomeBank,
-            transactionIncomeCash = txIncomeCash,
             totalIncome = totalIncome,
             totalLoansTaken = loansTaken,
             totalRepaymentsReceived = repaymentsReceived,
@@ -148,6 +137,11 @@ object BalanceCalculator {
             totalCashDebtPayments = cashDebtPayments,
             cashInHand = cashInHand,
             totalSpent = totalSpent,
+            openingCashBalance = openingCash,
+            setupSalary = salary,
+            setupExtraIncome = extraInc,
+            transactionIncomeBank = txIncomeBank,
+            transactionIncomeCash = txIncomeCash,
             isCarriedOverFromPrevMonth = isCarriedOver
         )
     }
