@@ -4,9 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Atm
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Atm
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -73,7 +72,6 @@ fun HomeScreen(
                 )
             }
 
-            // Gradient Balance Card
             item {
                 GradientCard {
                     Text(
@@ -129,7 +127,6 @@ fun HomeScreen(
                 }
             }
 
-            // Quick Navigation Shortcuts
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -154,7 +151,6 @@ fun HomeScreen(
                 }
             }
 
-            // Month Setup Trigger Button if missing
             if (monthSetup == null) {
                 item {
                     Button(
@@ -166,7 +162,6 @@ fun HomeScreen(
                 }
             }
 
-            // Upcoming Recurring Payments Section
             val unpaidRecurring = recurringList.filter { rec ->
                 rec.active && !rec.paidMonths.contains(currentYM) && !rec.skippedMonths.contains(currentYM)
             }
@@ -208,7 +203,6 @@ fun HomeScreen(
             }
         }
 
-        // Floating ATM Button
         FloatingActionButton(
             onClick = { showWithdrawalDialog = true },
             modifier = Modifier
@@ -239,4 +233,102 @@ fun HomeScreen(
             }
         )
     }
+}
+
+@Composable
+fun MonthSetupDialog(
+    initial: MonthSetup?,
+    onDismiss: () -> Unit,
+    onSave: (MonthSetup) -> Unit
+) {
+    var salary by remember { mutableStateOf(initial?.salary?.toString() ?: "") }
+    var extraInc by remember { mutableStateOf(initial?.extraIncome?.toString() ?: "") }
+    var openingBal by remember { mutableStateOf(initial?.openingBankBalance?.toString() ?: "") }
+    var overallLimit by remember { mutableStateOf(initial?.overallBudgetLimit?.toString() ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Monthly Budget & Balance Setup") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = salary,
+                    onValueChange = { salary = it },
+                    label = { Text("Monthly Salary") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = extraInc,
+                    onValueChange = { extraInc = it },
+                    label = { Text("Extra Income (Optional)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = openingBal,
+                    onValueChange = { openingBal = it },
+                    label = { Text("Opening Bank Balance") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = overallLimit,
+                    onValueChange = { overallLimit = it },
+                    label = { Text("Overall Spending Limit (Optional)") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val s = salary.toDoubleOrNull() ?: 0.0
+                val e = extraInc.toDoubleOrNull() ?: 0.0
+                val o = openingBal.toDoubleOrNull() ?: 0.0
+                val l = overallLimit.toDoubleOrNull() ?: 0.0
+                onSave(
+                    MonthSetup(
+                        salary = s,
+                        extraIncome = e,
+                        openingBankBalance = o,
+                        overallBudgetLimit = l
+                    )
+                )
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun QuickWithdrawalDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var amountText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Record ATM / Bank Withdrawal") },
+        text = {
+            OutlinedTextField(
+                value = amountText,
+                onValueChange = { amountText = it },
+                label = { Text("Withdrawal Amount") },
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(onClick = {
+                val amt = amountText.toDoubleOrNull() ?: 0.0
+                if (amt > 0.0) onConfirm(amt)
+            }) {
+                Text("Record")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
