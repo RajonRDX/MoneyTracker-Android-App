@@ -122,15 +122,18 @@ class FirestoreFinanceRepository : FinanceRepository {
         awaitClose { listener.remove() }
     }
 
-    override suspend fun ensureDefaultCategories() {
+	override suspend fun ensureDefaultCategories() {
         val ref = userDoc.collection("categories")
         val snapshot = ref.get().await()
         if (snapshot.isEmpty) {
             val defaults = listOf(
-                ExpenseCategory(id = "food", name = "Food & Dining", colorHex = 0xFFEF5350L, iconName = "restaurant", isDefault = true),
-                ExpenseCategory(id = "transport", name = "Transportation", colorHex = 0xFF42A5F5L, iconName = "directions_car", isDefault = true),
-                ExpenseCategory(id = "utilities", name = "Utilities & Bills", colorHex = 0xFFFFCA28L, iconName = "bolt", isDefault = true),
-                ExpenseCategory(id = "shopping", name = "Shopping", colorHex = 0xFFAB47BCL, iconName = "shopping_bag", isDefault = true)
+                ExpenseCategory(id = "food", name = "Food & Dining", colorHex = 0xFFEF4444L, iconName = "restaurant", isDefault = true),
+                ExpenseCategory(id = "groceries", name = "Groceries & Bazar", colorHex = 0xFF10B981L, iconName = "shopping_cart", isDefault = true),
+                ExpenseCategory(id = "transport", name = "Transport & Fuel", colorHex = 0xFF3B82F6L, iconName = "directions_car", isDefault = true),
+                ExpenseCategory(id = "utilities", name = "Utilities & Bills", colorHex = 0xFFF59E0BL, iconName = "bolt", isDefault = true),
+                ExpenseCategory(id = "shopping", name = "Shopping & Lifestyle", colorHex = 0xFF8B5CF6L, iconName = "shopping_bag", isDefault = true),
+                ExpenseCategory(id = "health", name = "Health & Pharmacy", colorHex = 0xFFEC4899L, iconName = "medical_services", isDefault = true),
+                ExpenseCategory(id = "salary", name = "Salary & Income", colorHex = 0xFF059669L, iconName = "payments", isDefault = true)
             )
             val batch = firestore.batch()
             for (cat in defaults) {

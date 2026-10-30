@@ -1,0 +1,4038 @@
+
+
+--- FILE: app/src/main/AndroidManifest.xml ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/data/di/AppContainer.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/data/di/AppViewModelProvider.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/data/local/LocalPrefs.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/data/model/Models.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/data/repository/FirestoreRepositories.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/data/repository/Repositories.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/domain/BalanceCalculator.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/domain/BudgetEvaluator.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/domain/SummaryBuilder.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/export/CsvExporter.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/export/JsonBackupManager.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/export/PdfReportGenerator.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/MainActivity.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/MoneyTrackerApp.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/components/Charts.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/components/CommonComponents.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/navigation/AppNavHost.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/navigation/NavRoutes.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/auth/AuthScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/auth/AuthViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/auth/LockScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/budget/BudgetScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/budget/BudgetViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/debts/DebtsScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/debts/DebtsViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/history/HistoryScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/history/HistoryViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/home/HomeScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/home/HomeViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/more/MoreScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/more/SettingsScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/more/SettingsViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/savings/SavingsScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/savings/SavingsViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/transactions/TransactionsScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/transactions/TransactionsViewModel.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/theme/Color.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/theme/Theme.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/theme/Type.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/util/DateUtils.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/util/Formatters.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/worker/BootReceiver.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/worker/DailyReminderWorker.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/worker/NotificationHelper.kt ---
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <application
+        android:name=".MoneyTrackerApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MoneyTracker.Splash"
+        tools:targetApi="35">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.MoneyTracker.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".worker.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
+package com.rajon.moneytracker.data.di
+
+import android.content.Context
+import com.rajon.moneytracker.data.local.LocalPrefs
+import com.rajon.moneytracker.data.repository.AuthRepository
+import com.rajon.moneytracker.data.repository.FirebaseAuthRepository
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import com.rajon.moneytracker.data.repository.FirestoreFinanceRepository
+
+class AppContainer(val context: Context) {
+    val localPrefs: LocalPrefs by lazy { LocalPrefs(context) }
+    val authRepository: AuthRepository by lazy { FirebaseAuthRepository() }
+    val financeRepository: FinanceRepository by lazy { FirestoreFinanceRepository() }
+}
+package com.rajon.moneytracker.data.di
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.viewmodel.CreationExtras
+import com.rajon.moneytracker.MoneyTrackerApp
+import com.rajon.moneytracker.ui.screens.auth.AuthViewModel
+import com.rajon.moneytracker.ui.screens.budget.BudgetViewModel
+import com.rajon.moneytracker.ui.screens.debts.DebtsViewModel
+import com.rajon.moneytracker.ui.screens.home.HomeViewModel
+import com.rajon.moneytracker.ui.screens.history.HistoryViewModel
+import com.rajon.moneytracker.ui.screens.savings.SavingsViewModel
+import com.rajon.moneytracker.ui.screens.transactions.TransactionsViewModel
+import com.rajon.moneytracker.ui.screens.more.SettingsViewModel
+
+object AppViewModelProvider {
+    val Factory = object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+            val application = checkNotNull(extras[APPLICATION_KEY]) as MoneyTrackerApp
+            val container = application.container
+
+            return when {
+                modelClass.isAssignableFrom(AuthViewModel::class.java) ->
+                    AuthViewModel(container.authRepository) as T
+                modelClass.isAssignableFrom(HomeViewModel::class.java) ->
+                    HomeViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(TransactionsViewModel::class.java) ->
+                    TransactionsViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(BudgetViewModel::class.java) ->
+                    BudgetViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(SavingsViewModel::class.java) ->
+                    SavingsViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(DebtsViewModel::class.java) ->
+                    DebtsViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(HistoryViewModel::class.java) ->
+                    HistoryViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
+                    SettingsViewModel(container.financeRepository, container.localPrefs) as T
+                else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+            }
+        }
+    }
+}package com.rajon.moneytracker.data.local
+
+import android.content.Context
+import android.content.SharedPreferences
+
+class LocalPrefs(context: Context) {
+    private val prefs: SharedPreferences = context.getSharedPreferences("money_tracker_local_prefs", Context.MODE_PRIVATE)
+
+    var isLocked: Boolean
+        get() = prefs.getBoolean("is_locked", false)
+        set(value) = prefs.edit().putBoolean("is_locked", value).apply()
+
+    var lastNotifiedDate: String
+        get() = prefs.getString("last_notified_date", "") ?: ""
+        set(value) = prefs.edit().putString("last_notified_date", value).apply()
+
+    var lastClosedMonth: String
+        get() = prefs.getString("last_closed_month", "") ?: ""
+        set(value) = prefs.edit().putString("last_closed_month", value).apply()
+}
+package com.rajon.moneytracker.data.model
+
+import java.io.Serializable
+
+enum class TransactionType {
+    EXPENSE, INCOME, WITHDRAWAL
+}
+
+enum class PaymentSource(val displayName: String) {
+    BANK("Bank"),
+    CASH("Cash"),
+    BKASH("bKash"),
+    NAGAD("Nagad"),
+    CARD("Card")
+}
+
+enum class DebtType(val displayName: String) {
+    I_OWE("I Owe"),
+    OWED_TO_ME("Owed to Me")
+}
+
+enum class DebtStatus(val displayName: String) {
+    ACTIVE("Active"),
+    CLOSED("Closed")
+}
+
+enum class ThemeMode {
+    SYSTEM, LIGHT, DARK
+}
+
+data class UserSettings(
+    val id: String = "profile",
+    val currencySymbol: String = "৳",
+    val themeMode: String = "SYSTEM",
+    val dynamicColor: Boolean = false,
+    val biometricEnabled: Boolean = false,
+    val overallMonthlyLimit: Double = 0.0,
+    val extraSpendingLimit: Double = 0.0,
+    val reminderHour: Int = 9,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class MonthSetup(
+    val yearMonth: String = "",
+    val openingBalance: Double = 0.0,
+    val openingBankBalance: Double = 0.0,
+    val salary: Double = 0.0,
+    val extraIncome: Double = 0.0,
+    val incomeAmount: Double = 0.0,
+    val expectedSavings: Double = 0.0,
+    val overallBudgetLimit: Double = 0.0,
+    val extraSpendingLimit: Double = 0.0
+) : Serializable
+
+data class ExpenseCategory(
+    val id: String = "",
+    val name: String = "",
+    val colorHex: Long = 0xFF00897BL,
+    val iconName: String = "category",
+    val isDefault: Boolean = false,
+    val isArchived: Boolean = false,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class Transaction(
+    val id: String = "",
+    val yearMonth: String = "",
+    val type: String = "EXPENSE",
+    val amount: Double = 0.0,
+    val dateMillis: Long = 0L,
+    val categoryId: String = "",
+    val categoryName: String = "",
+    val paymentSource: String = "CASH",
+    val note: String = "",
+    val isExtra: Boolean = false,
+    val isOneOffBill: Boolean = false,
+    val linkedRecurringId: String? = null,
+    val linkedDebtId: String? = null,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class RecurringPayment(
+    val id: String = "",
+    val name: String = "",
+    val amount: Double = 0.0,
+    val dueDay: Int = 1,
+    val categoryId: String = "",
+    val categoryName: String = "",
+    val paymentSource: String = "BANK",
+    val remindDaysBefore: Int = 3,
+    val active: Boolean = true,
+    val paidMonths: List<String> = emptyList(),
+    val skippedMonths: List<String> = emptyList(),
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class CategoryBudget(
+    val id: String = "",
+    val yearMonth: String = "",
+    val categoryId: String = "",
+    val categoryName: String = "",
+    val limitAmount: Double = 0.0,
+    val carryOverAdjustment: Double = 0.0,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class SavingsGoal(
+    val id: String = "",
+    val name: String = "",
+    val targetAmount: Double = 0.0,
+    val currentAmount: Double = 0.0,
+    val targetDateMillis: Long? = null,
+    val iconName: String = "savings",
+    val colorHex: Long = 0xFF26A69AL,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class SavingsDeposit(
+    val id: String = "",
+    val goalId: String = "",
+    val yearMonth: String = "",
+    val amount: Double = 0.0,
+    val isWithdrawal: Boolean = false,
+    val takeFromBank: Boolean = true,
+    val dateMillis: Long = 0L,
+    val note: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class DebtItem(
+    val id: String = "",
+    val type: String = "I_OWE",
+    val personName: String = "",
+    val totalAmount: Double = 0.0,
+    val paidAmount: Double = 0.0,
+    val monthlyInstallment: Double = 0.0,
+    val dueDay: Int = 1,
+    val specificDueDateMillis: Long? = null,
+    val remindDaysBefore: Int = 3,
+    val interestRate: Double = 0.0,
+    val note: String = "",
+    val status: String = "ACTIVE",
+    val affectBankOnCreate: Boolean = false,
+    val createdInYearMonth: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class DebtPaymentRecord(
+    val id: String = "",
+    val debtId: String = "",
+    val debtType: String = "I_OWE",
+    val yearMonth: String = "",
+    val amount: Double = 0.0,
+    val dateMillis: Long = 0L,
+    val paymentSource: String = "BANK",
+    val note: String = "",
+    val linkedTransactionId: String? = null,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class MonthlySummary(
+    val id: String = "",
+    val yearMonth: String = "",
+    val totalIncome: Double = 0.0,
+    val totalSpent: Double = 0.0,
+    val totalBudgeted: Double = 0.0,
+    val savedAmount: Double = 0.0,
+    val overallOverspend: Double = 0.0,
+    val extraSpendingTotal: Double = 0.0,
+    val categoryBreakdown: Map<String, Double> = emptyMap(),
+    val categoryBudgetDiff: Map<String, Double> = emptyMap(),
+    val recurringPaidCount: Int = 0,
+    val recurringMissedCount: Int = 0,
+    val debtPaymentsTotal: Double = 0.0,
+    val savingsDepositsTotal: Double = 0.0,
+    val savingsWithdrawalsTotal: Double = 0.0,
+    val closingBankBalance: Double = 0.0,
+    val closingCashInHand: Double = 0.0,
+    val topCategories: List<String> = emptyList(),
+    val savingsRatePercent: Double = 0.0,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class WorkerDataSnapshot(
+    val settings: UserSettings,
+    val recurringList: List<RecurringPayment>,
+    val debtsList: List<DebtItem>
+)
+
+data class FullBackupPayload(
+    val version: Int = 1,
+    val exportedAt: Long = System.currentTimeMillis(),
+    val settings: UserSettings?,
+    val monthSetups: List<MonthSetup>,
+    val categories: List<ExpenseCategory>,
+    val transactions: List<Transaction>,
+    val recurring: List<RecurringPayment>,
+    val budgets: List<CategoryBudget>,
+    val goals: List<SavingsGoal>,
+    val goalDeposits: List<SavingsDeposit>,
+    val debts: List<DebtItem>,
+    val debtPayments: List<DebtPaymentRecord>,
+    val summaries: List<MonthlySummary>
+) : Serializablepackage com.rajon.moneytracker.data.repository
+
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.rajon.moneytracker.data.model.*
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.tasks.await
+
+class FirebaseAuthRepository : AuthRepository {
+    private val auth = FirebaseAuth.getInstance()
+
+    override val currentUserIdFlow: Flow<String?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            trySend(firebaseAuth.currentUser?.uid)
+        }
+        auth.addAuthStateListener(listener)
+        trySend(auth.currentUser?.uid)
+        awaitClose { auth.removeAuthStateListener(listener) }
+    }
+
+    override val currentUserEmail: String?
+        get() = auth.currentUser?.email
+
+    override val isLoggedIn: Boolean
+        get() = auth.currentUser != null
+
+    override suspend fun login(email: String, pass: String): Result<Unit> {
+        return try {
+            auth.signInWithEmailAndPassword(email, pass).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun register(email: String, pass: String): Result<Unit> {
+        return try {
+            auth.createUserWithEmailAndPassword(email, pass).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun sendPasswordReset(email: String): Result<Unit> {
+        return try {
+            auth.sendPasswordResetEmail(email).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun logout() {
+        auth.signOut()
+    }
+}
+
+class FirestoreFinanceRepository : FinanceRepository {
+    private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+
+    private val userId: String
+        get() = auth.currentUser?.uid ?: throw IllegalStateException("User not logged in")
+
+    private val userDoc
+        get() = firestore.collection("users").document(userId)
+
+    override fun observeSettings(): Flow<UserSettings> = callbackFlow {
+        val listener = userDoc.collection("settings").document("profile")
+            .addSnapshotListener { snapshot, _ ->
+                val settings = snapshot?.toObject(UserSettings::class.java) ?: UserSettings()
+                trySend(settings)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun updateSettings(settings: UserSettings) {
+        userDoc.collection("settings").document("profile").set(settings).await()
+    }
+
+    override fun observeMonthSetup(yearMonth: String): Flow<MonthSetup?> = callbackFlow {
+        val listener = userDoc.collection("month_setups").document(yearMonth)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null || !snapshot.exists()) {
+                    trySend(null)
+                } else {
+                    val setup = snapshot.toObject(MonthSetup::class.java)?.copy(
+                        yearMonth = yearMonth
+                    )
+                    trySend(setup)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeAllMonthSetups(): Flow<List<MonthSetup>> = callbackFlow {
+        val listener = userDoc.collection("month_setups")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(MonthSetup::class.java)?.copy(yearMonth = doc.id)
+                } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveMonthSetup(setup: MonthSetup) {
+        userDoc.collection("month_setups").document(setup.yearMonth).set(setup).await()
+    }
+
+    override fun observeCategories(): Flow<List<ExpenseCategory>> = callbackFlow {
+        val listener = userDoc.collection("categories")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(ExpenseCategory::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun ensureDefaultCategories() {
+        val ref = userDoc.collection("categories")
+        val snapshot = ref.get().await()
+        if (snapshot.isEmpty) {
+            val defaults = listOf(
+                ExpenseCategory(id = "food", name = "Food & Dining", colorHex = 0xFFEF5350L, iconName = "restaurant", isDefault = true),
+                ExpenseCategory(id = "transport", name = "Transportation", colorHex = 0xFF42A5F5L, iconName = "directions_car", isDefault = true),
+                ExpenseCategory(id = "utilities", name = "Utilities & Bills", colorHex = 0xFFFFCA28L, iconName = "bolt", isDefault = true),
+                ExpenseCategory(id = "shopping", name = "Shopping", colorHex = 0xFFAB47BCL, iconName = "shopping_bag", isDefault = true)
+            )
+            val batch = firestore.batch()
+            for (cat in defaults) {
+                batch.set(ref.document(cat.id), cat)
+            }
+            batch.commit().await()
+        }
+    }
+
+    override suspend fun saveCategory(category: ExpenseCategory) {
+        val id = if (category.id.isBlank()) userDoc.collection("categories").document().id else category.id
+        val toSave = category.copy(id = id, updatedAt = System.currentTimeMillis())
+        userDoc.collection("categories").document(id).set(toSave).await()
+    }
+
+    override suspend fun deleteCategory(categoryId: String) {
+        userDoc.collection("categories").document(categoryId).delete().await()
+    }
+
+    override fun observeTransactions(yearMonth: String): Flow<List<Transaction>> = callbackFlow {
+        val listener = userDoc.collection("transactions")
+            .whereEqualTo("yearMonth", yearMonth)
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(Transaction::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeAllTransactions(): Flow<List<Transaction>> = callbackFlow {
+        val listener = userDoc.collection("transactions")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(Transaction::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveTransaction(tx: Transaction) {
+        val id = if (tx.id.isBlank()) userDoc.collection("transactions").document().id else tx.id
+        val toSave = tx.copy(id = id, updatedAt = System.currentTimeMillis())
+        userDoc.collection("transactions").document(id).set(toSave).await()
+    }
+
+    override suspend fun deleteTransaction(txId: String) {
+        userDoc.collection("transactions").document(txId).delete().await()
+    }
+
+    override fun observeRecurring(): Flow<List<RecurringPayment>> = callbackFlow {
+        val listener = userDoc.collection("recurring")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(RecurringPayment::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveRecurring(item: RecurringPayment) {
+        val id = if (item.id.isBlank()) userDoc.collection("recurring").document().id else item.id
+        val toSave = item.copy(id = id, updatedAt = System.currentTimeMillis())
+        userDoc.collection("recurring").document(id).set(toSave).await()
+    }
+
+    override suspend fun deleteRecurring(id: String) {
+        userDoc.collection("recurring").document(id).delete().await()
+    }
+
+    override suspend fun markRecurringPaid(item: RecurringPayment, yearMonth: String, dateMillis: Long) {
+        val updatedPaid = item.paidMonths + yearMonth
+        val toSave = item.copy(paidMonths = updatedPaid, updatedAt = System.currentTimeMillis())
+        userDoc.collection("recurring").document(item.id).set(toSave).await()
+    }
+
+    override suspend fun markRecurringSkipped(item: RecurringPayment, yearMonth: String) {
+        val updatedSkipped = item.skippedMonths + yearMonth
+        val toSave = item.copy(skippedMonths = updatedSkipped, updatedAt = System.currentTimeMillis())
+        userDoc.collection("recurring").document(item.id).set(toSave).await()
+    }
+
+    override fun observeBudgets(yearMonth: String): Flow<List<CategoryBudget>> = callbackFlow {
+        val listener = userDoc.collection("budgets")
+            .whereEqualTo("yearMonth", yearMonth)
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(CategoryBudget::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveBudget(budget: CategoryBudget) {
+        val id = if (budget.id.isBlank()) "${budget.yearMonth}_${budget.categoryId}" else budget.id
+        val toSave = budget.copy(id = id, updatedAt = System.currentTimeMillis())
+        userDoc.collection("budgets").document(id).set(toSave).await()
+    }
+
+    override fun observeGoals(): Flow<List<SavingsGoal>> = callbackFlow {
+        val listener = userDoc.collection("goals")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(SavingsGoal::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeGoalDeposits(goalId: String): Flow<List<SavingsDeposit>> = callbackFlow {
+        val listener = userDoc.collection("deposits")
+            .whereEqualTo("goalId", goalId)
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(SavingsDeposit::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeMonthDeposits(yearMonth: String): Flow<List<SavingsDeposit>> = callbackFlow {
+        val listener = userDoc.collection("deposits")
+            .whereEqualTo("yearMonth", yearMonth)
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(SavingsDeposit::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeAllDeposits(): Flow<List<SavingsDeposit>> = callbackFlow {
+        val listener = userDoc.collection("deposits")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(SavingsDeposit::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveGoal(goal: SavingsGoal) {
+        val id = if (goal.id.isBlank()) userDoc.collection("goals").document().id else goal.id
+        val toSave = goal.copy(id = id, updatedAt = System.currentTimeMillis())
+        userDoc.collection("goals").document(id).set(toSave).await()
+    }
+
+    override suspend fun deleteGoal(goalId: String) {
+        userDoc.collection("goals").document(goalId).delete().await()
+    }
+
+    override suspend fun addGoalDeposit(goal: SavingsGoal, deposit: SavingsDeposit) {
+        val depositId = if (deposit.id.isBlank()) userDoc.collection("deposits").document().id else deposit.id
+        val savedDeposit = deposit.copy(id = depositId, goalId = goal.id, updatedAt = System.currentTimeMillis())
+        
+        val newCurrent = if (deposit.isWithdrawal) goal.currentAmount - deposit.amount else goal.currentAmount + deposit.amount
+        val updatedGoal = goal.copy(currentAmount = newCurrent, updatedAt = System.currentTimeMillis())
+
+        val batch = firestore.batch()
+        batch.set(userDoc.collection("deposits").document(depositId), savedDeposit)
+        batch.set(userDoc.collection("goals").document(goal.id), updatedGoal)
+        batch.commit().await()
+    }
+
+    override fun observeDebts(): Flow<List<DebtItem>> = callbackFlow {
+        val listener = userDoc.collection("debts")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(DebtItem::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeDebtPayments(debtId: String): Flow<List<DebtPaymentRecord>> = callbackFlow {
+        val listener = userDoc.collection("debt_payments")
+            .whereEqualTo("debtId", debtId)
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(DebtPaymentRecord::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeMonthDebtPayments(yearMonth: String): Flow<List<DebtPaymentRecord>> = callbackFlow {
+        val listener = userDoc.collection("debt_payments")
+            .whereEqualTo("yearMonth", yearMonth)
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(DebtPaymentRecord::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeAllDebtPayments(): Flow<List<DebtPaymentRecord>> = callbackFlow {
+        val listener = userDoc.collection("debt_payments")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(DebtPaymentRecord::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveDebt(debt: DebtItem) {
+        val id = if (debt.id.isBlank()) userDoc.collection("debts").document().id else debt.id
+        val toSave = debt.copy(id = id, updatedAt = System.currentTimeMillis())
+        userDoc.collection("debts").document(id).set(toSave).await()
+    }
+
+    override suspend fun deleteDebt(debtId: String) {
+        userDoc.collection("debts").document(debtId).delete().await()
+    }
+
+    override suspend fun addDebtPayment(debt: DebtItem, payment: DebtPaymentRecord, createExpenseTx: Boolean) {
+        val paymentId = if (payment.id.isBlank()) userDoc.collection("debt_payments").document().id else payment.id
+        val savedPayment = payment.copy(id = paymentId, debtId = debt.id, updatedAt = System.currentTimeMillis())
+        
+        val newPaid = debt.paidAmount + payment.amount
+        val newStatus = if (newPaid >= debt.totalAmount) DebtStatus.CLOSED.name else DebtStatus.ACTIVE.name
+        val updatedDebt = debt.copy(paidAmount = newPaid, status = newStatus, updatedAt = System.currentTimeMillis())
+
+        val batch = firestore.batch()
+        batch.set(userDoc.collection("debt_payments").document(paymentId), savedPayment)
+        batch.set(userDoc.collection("debts").document(debt.id), updatedDebt)
+        batch.commit().await()
+    }
+
+    override fun observeMonthlySummaries(): Flow<List<MonthlySummary>> = callbackFlow {
+        val listener = userDoc.collection("monthly_summaries")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(MonthlySummary::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override fun observeMonthlySummary(yearMonth: String): Flow<MonthlySummary?> = callbackFlow {
+        val listener = userDoc.collection("monthly_summaries").document(yearMonth)
+            .addSnapshotListener { snapshot, _ ->
+                trySend(snapshot?.toObject(MonthlySummary::class.java))
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveMonthlySummary(summary: MonthlySummary) {
+        userDoc.collection("monthly_summaries").document(summary.yearMonth).set(summary).await()
+    }
+
+    override suspend fun getSnapshotForWorker(): WorkerDataSnapshot {
+        // Implementation for background worker snapshots if needed
+        return WorkerDataSnapshot(UserSettings(), emptyList(), emptyList())
+    }
+
+    override suspend fun exportFullBackupData(): FullBackupPayload {
+        return FullBackupPayload(
+            version = 1,
+            settings = null,
+            monthSetups = emptyList(),
+            categories = emptyList(),
+            transactions = emptyList(),
+            recurring = emptyList(),
+            budgets = emptyList(),
+            goals = emptyList(),
+            goalDeposits = emptyList(),
+            debts = emptyList(),
+            debtPayments = emptyList(),
+            summaries = emptyList()
+        )
+    }
+
+    override suspend fun restoreFullBackupData(payload: FullBackupPayload) {
+        // Restore logic if needed
+    }
+}package com.rajon.moneytracker.data.repository
+
+import com.rajon.moneytracker.data.model.*
+import kotlinx.coroutines.flow.Flow
+
+interface AuthRepository {
+    val currentUserIdFlow: Flow<String?>
+    val currentUserEmail: String?
+    val isLoggedIn: Boolean
+
+    suspend fun login(email: String, pass: String): Result<Unit>
+    suspend fun register(email: String, pass: String): Result<Unit>
+    suspend fun sendPasswordReset(email: String): Result<Unit>
+    fun logout()
+}
+
+interface FinanceRepository {
+    fun observeSettings(): Flow<UserSettings>
+    suspend fun updateSettings(settings: UserSettings)
+
+    fun observeMonthSetup(yearMonth: String): Flow<MonthSetup?>
+    fun observeAllMonthSetups(): Flow<List<MonthSetup>>
+    suspend fun saveMonthSetup(setup: MonthSetup)
+
+    fun observeCategories(): Flow<List<ExpenseCategory>>
+    suspend fun ensureDefaultCategories()
+    suspend fun saveCategory(category: ExpenseCategory)
+    suspend fun deleteCategory(categoryId: String)
+
+    fun observeTransactions(yearMonth: String): Flow<List<Transaction>>
+    fun observeAllTransactions(): Flow<List<Transaction>>
+    suspend fun saveTransaction(tx: Transaction)
+    suspend fun deleteTransaction(txId: String)
+
+    fun observeRecurring(): Flow<List<RecurringPayment>>
+    suspend fun saveRecurring(item: RecurringPayment)
+    suspend fun deleteRecurring(id: String)
+    suspend fun markRecurringPaid(item: RecurringPayment, yearMonth: String, dateMillis: Long)
+    suspend fun markRecurringSkipped(item: RecurringPayment, yearMonth: String)
+
+    fun observeBudgets(yearMonth: String): Flow<List<CategoryBudget>>
+    suspend fun saveBudget(budget: CategoryBudget)
+
+    fun observeGoals(): Flow<List<SavingsGoal>>
+    fun observeGoalDeposits(goalId: String): Flow<List<SavingsDeposit>>
+    fun observeMonthDeposits(yearMonth: String): Flow<List<SavingsDeposit>>
+    fun observeAllDeposits(): Flow<List<SavingsDeposit>>
+    suspend fun saveGoal(goal: SavingsGoal)
+    suspend fun deleteGoal(goalId: String)
+    suspend fun addGoalDeposit(goal: SavingsGoal, deposit: SavingsDeposit)
+
+    fun observeDebts(): Flow<List<DebtItem>>
+    fun observeDebtPayments(debtId: String): Flow<List<DebtPaymentRecord>>
+    fun observeMonthDebtPayments(yearMonth: String): Flow<List<DebtPaymentRecord>>
+    fun observeAllDebtPayments(): Flow<List<DebtPaymentRecord>>
+    suspend fun saveDebt(debt: DebtItem)
+    suspend fun deleteDebt(debtId: String)
+    suspend fun addDebtPayment(debt: DebtItem, payment: DebtPaymentRecord, createExpenseTx: Boolean)
+
+    fun observeMonthlySummaries(): Flow<List<MonthlySummary>>
+    fun observeMonthlySummary(yearMonth: String): Flow<MonthlySummary?>
+    suspend fun saveMonthlySummary(summary: MonthlySummary)
+
+    suspend fun getSnapshotForWorker(): WorkerDataSnapshot
+    suspend fun exportFullBackupData(): FullBackupPayload
+    suspend fun restoreFullBackupData(payload: FullBackupPayload)
+}
+package com.rajon.moneytracker.domain
+
+import com.rajon.moneytracker.data.model.DebtPaymentRecord
+import com.rajon.moneytracker.data.model.MonthSetup
+import com.rajon.moneytracker.data.model.PaymentSource
+import com.rajon.moneytracker.data.model.SavingsDeposit
+import com.rajon.moneytracker.data.model.Transaction
+import com.rajon.moneytracker.data.model.TransactionType
+
+data class BalanceBreakdown(
+    val openingBankBalance: Double,
+    val totalIncome: Double,
+    val totalLoansTaken: Double,
+    val totalRepaymentsReceived: Double,
+    val totalWithdrawals: Double,
+    val totalBankExpenses: Double,
+    val totalCardExpenses: Double,
+    val totalWalletExpenses: Double,
+    val totalDebtPaymentsFromBank: Double,
+    val totalLoansGivenFromBank: Double,
+    val totalSavingsFromBank: Double,
+    val bankBalanceLeft: Double,
+
+    val totalCashExpenses: Double,
+    val totalCashDebtPayments: Double,
+    val cashInHand: Double,
+
+    val totalSpent: Double
+)
+
+object BalanceCalculator {
+    /**
+     * Calculates exact bank balance left and cash in hand for a given month.
+     * Logic strictly adheres to project contract:
+     * Bank balance = opening balance + income + loans taken + repayments received
+     *                - withdrawals - bank/card/wallet expenses - debt payments from bank
+     *                - loans given from bank - savings transfers taken from bank.
+     * Cash in hand = withdrawals - cash expenses - cash debt payments.
+     */
+    fun calculate(
+        monthSetup: MonthSetup?,
+        transactions: List<Transaction>,
+        savingsDeposits: List<SavingsDeposit>,
+        debtPayments: List<DebtPaymentRecord>
+    ): BalanceBreakdown {
+        val opening = monthSetup?.openingBankBalance ?: 0.0
+        val salary = monthSetup?.salary ?: 0.0
+        val extraInc = monthSetup?.extraIncome ?: 0.0
+        val totalIncome = salary + extraInc
+
+        // Filter transactions for this month or general
+        var loansTaken = 0.0
+        var repaymentsReceived = 0.0
+        var withdrawals = 0.0
+        var bankExpenses = 0.0
+        var cardExpenses = 0.0
+        var walletExpenses = 0.0
+        var cashExpenses = 0.0
+        var loansGivenFromBank = 0.0
+
+        for (tx in transactions) {
+            when (tx.type) {
+                TransactionType.INCOME.name -> {
+                    // Extra income or loan received via transaction
+                    if (tx.note.contains("Loan", ignoreCase = true)) {
+                        loansTaken += tx.amount
+                    }
+                }
+                TransactionType.WITHDRAWAL.name -> {
+                    withdrawals += tx.amount
+                }
+                TransactionType.EXPENSE.name -> {
+                    val isBank = tx.paymentSource == PaymentSource.BANK.name
+                    val isCard = tx.paymentSource == PaymentSource.CARD.name
+                    val isWallet = tx.paymentSource == PaymentSource.BKASH.name || tx.paymentSource == PaymentSource.NAGAD.name
+                    val isCash = tx.paymentSource == PaymentSource.CASH.name
+
+                    if (isBank) bankExpenses += tx.amount
+                    else if (isCard) cardExpenses += tx.amount
+                    else if (isWallet) walletExpenses += tx.amount
+                    else if (isCash) cashExpenses += tx.amount
+
+                    if (tx.note.contains("Lend", ignoreCase = true) && isBank) {
+                        loansGivenFromBank += tx.amount
+                    }
+                }
+            }
+        }
+
+        // Debt payments from bank vs cash
+        var debtPaymentsFromBank = 0.0
+        var cashDebtPayments = 0.0
+        for (dp in debtPayments) {
+            if (dp.paymentSource == PaymentSource.BANK.name || dp.paymentSource == PaymentSource.CARD.name || dp.paymentSource == PaymentSource.BKASH.name || dp.paymentSource == PaymentSource.NAGAD.name) {
+                debtPaymentsFromBank += dp.amount
+            } else {
+                cashDebtPayments += dp.amount
+            }
+        }
+
+        // Savings from bank
+        var savingsFromBank = 0.0
+        for (dep in savingsDeposits) {
+            if (dep.takeFromBank && !dep.isWithdrawal) {
+                savingsFromBank += dep.amount
+            } else if (dep.takeFromBank && dep.isWithdrawal) {
+                // Withdrawal from savings back to bank
+                withdrawals -= dep.amount // effectively adds back to bank or reduces transfer
+            }
+        }
+
+        val totalSpent = bankExpenses + cardExpenses + walletExpenses + cashExpenses
+        val totalBankOutflow = withdrawals + bankExpenses + cardExpenses + walletExpenses + debtPaymentsFromBank + loansGivenFromBank + savingsFromBank
+        val totalBankInflow = opening + totalIncome + loansTaken + repaymentsReceived
+
+        val bankBalanceLeft = totalBankInflow - totalBankOutflow
+        val cashInHand = withdrawals - cashExpenses - cashDebtPayments
+
+        return BalanceBreakdown(
+            openingBankBalance = opening,
+            totalIncome = totalIncome,
+            totalLoansTaken = loansTaken,
+            totalRepaymentsReceived = repaymentsReceived,
+            totalWithdrawals = withdrawals,
+            totalBankExpenses = bankExpenses,
+            totalCardExpenses = cardExpenses,
+            totalWalletExpenses = walletExpenses,
+            totalDebtPaymentsFromBank = debtPaymentsFromBank,
+            totalLoansGivenFromBank = loansGivenFromBank,
+            totalSavingsFromBank = savingsFromBank,
+            bankBalanceLeft = bankBalanceLeft,
+            totalCashExpenses = cashExpenses,
+            totalCashDebtPayments = cashDebtPayments,
+            cashInHand = cashInHand,
+            totalSpent = totalSpent
+        )
+    }
+}
+package com.rajon.moneytracker.domain
+
+import com.rajon.moneytracker.data.model.CategoryBudget
+import com.rajon.moneytracker.data.model.Transaction
+
+data class BudgetStatus(
+    val categoryId: String,
+    val categoryName: String,
+    val limitAmount: Double,
+    val spentAmount: Double,
+    val percentage: Float,
+    val isOverBudget: Boolean,
+    val isWarning: Boolean // 70% to 99%
+)
+
+object BudgetEvaluator {
+    fun evaluateBudgets(
+        budgets: List<CategoryBudget>,
+        transactions: List<Transaction>,
+        overallLimit: Double,
+        extraLimit: Double
+    ): List<BudgetStatus> {
+        val spentMap = transactions
+            .filter { it.type == "EXPENSE" }
+            .groupBy { it.categoryId }
+            .mapValues { entry -> entry.value.sumOf { it.amount } }
+
+        return budgets.map { b ->
+            val spent = spentMap[b.categoryId] ?: 0.0
+            val effectiveLimit = b.limitAmount + b.carryOverAdjustment
+            val pct = if (effectiveLimit > 0.0) ((spent / effectiveLimit) * 100).toFloat() else 0f
+            BudgetStatus(
+                categoryId = b.categoryId,
+                categoryName = b.categoryName,
+                limitAmount = effectiveLimit,
+                spentAmount = spent,
+                percentage = pct,
+                isOverBudget = spent >= effectiveLimit && effectiveLimit > 0.0,
+                isWarning = pct >= 70f && pct < 100f
+            )
+        }
+    }
+}
+package com.rajon.moneytracker.domain
+
+import com.rajon.moneytracker.data.model.*
+
+object SummaryBuilder {
+    fun buildMonthlySummary(
+        yearMonth: String,
+        monthSetup: MonthSetup?,
+        transactions: List<Transaction>,
+        budgets: List<CategoryBudget>,
+        recurringList: List<RecurringPayment>,
+        savingsDeposits: List<SavingsDeposit>,
+        debtPayments: List<DebtPaymentRecord>,
+        balanceBreakdown: BalanceBreakdown
+    ): MonthlySummary {
+        val totalIncome = balanceBreakdown.totalIncome
+        val totalSpent = balanceBreakdown.totalSpent
+        val totalBudgeted = budgets.sumOf { it.limitAmount + it.carryOverAdjustment }
+        val savedAmount = (totalIncome - totalSpent).coerceAtLeast(0.0)
+
+        val catBreakdown = transactions
+            .filter { it.type == "EXPENSE" }
+            .groupBy { it.categoryName.ifBlank { "Other" } }
+            .mapValues { entry -> entry.value.sumOf { it.amount } }
+
+        val topCategories = catBreakdown.entries
+            .sortedByDescending { it.value }
+            .take(5)
+            .map { it.key }
+
+        val extraTotal = transactions
+            .filter { it.type == "EXPENSE" && it.isExtra }
+            .sumOf { it.amount }
+
+        val debtTotal = debtPayments.sumOf { it.amount }
+        val savingsDepTotal = savingsDeposits.filter { !it.isWithdrawal }.sumOf { it.amount }
+        val savingsWdTotal = savingsDeposits.filter { it.isWithdrawal }.sumOf { it.amount }
+
+        val recurringForMonth = recurringList.filter { it.active }
+        val paidCount = recurringForMonth.count { it.paidMonths.contains(yearMonth) }
+        val missedCount = recurringForMonth.count { !it.paidMonths.contains(yearMonth) && !it.skippedMonths.contains(yearMonth) }
+
+        val savingsRate = if (totalIncome > 0.0) ((savedAmount / totalIncome) * 100) else 0.0
+
+        return MonthlySummary(
+            id = yearMonth,
+            yearMonth = yearMonth,
+            totalIncome = totalIncome,
+            totalSpent = totalSpent,
+            totalBudgeted = totalBudgeted,
+            savedAmount = savedAmount,
+            overallOverspend = (totalSpent - totalBudgeted).coerceAtLeast(0.0),
+            extraSpendingTotal = extraTotal,
+            categoryBreakdown = catBreakdown,
+            categoryBudgetDiff = emptyMap(),
+            recurringPaidCount = paidCount,
+            recurringMissedCount = missedCount,
+            debtPaymentsTotal = debtTotal,
+            savingsDepositsTotal = savingsDepTotal,
+            savingsWithdrawalsTotal = savingsWdTotal,
+            closingBankBalance = balanceBreakdown.bankBalanceLeft,
+            closingCashInHand = balanceBreakdown.cashInHand,
+            topCategories = topCategories,
+            savingsRatePercent = savingsRate
+        )
+    }
+
+    fun generateInsights(currentSummary: MonthlySummary, previousSummary: MonthlySummary?): List<String> {
+        val insights = mutableListOf<String>()
+        if (previousSummary == null) {
+            insights.add("Welcome to your first month summary! Keep tracking daily to unlock comparative insights.")
+            return insights
+        }
+
+        val spendDiff = currentSummary.totalSpent - previousSummary.totalSpent
+        if (spendDiff > 0) {
+            val pct = if (previousSummary.totalSpent > 0) (spendDiff / previousSummary.totalSpent) * 100 else 0.0
+            insights.add("You spent %.1f%% more this month compared to last month.".format(pct))
+        } else if (spendDiff < 0) {
+            insights.add("Great job! You spent less this month than last month.")
+        }
+
+        if (currentSummary.savingsRatePercent > previousSummary.savingsRatePercent) {
+            insights.add("Your savings rate improved to %.1f%%!".format(currentSummary.savingsRatePercent))
+        }
+
+        return insights
+    }
+}
+package com.rajon.moneytracker.export
+
+import com.rajon.moneytracker.data.model.Transaction
+import java.io.File
+import java.io.FileWriter
+
+object CsvExporter {
+    fun exportTransactionsToCsv(transactions: List<Transaction>, file: File): Boolean {
+        return try {
+            FileWriter(file).use { writer ->
+                writer.append("ID,YearMonth,Type,Amount,DateMillis,CategoryName,PaymentSource,Note,IsExtra\n")
+                for (tx in transactions) {
+                    writer.append("${tx.id},${tx.yearMonth},${tx.type},${tx.amount},${tx.dateMillis},\"${tx.categoryName}\",${tx.paymentSource},\"${tx.note}\",${tx.isExtra}\n")
+                }
+                writer.flush()
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+}
+package com.rajon.moneytracker.export
+
+import com.google.gson.GsonBuilder
+import com.rajon.moneytracker.data.model.FullBackupPayload
+import java.io.File
+import java.io.FileReader
+import java.io.FileWriter
+
+object JsonBackupManager {
+    private val gson = GsonBuilder().setPrettyPrinting().create()
+
+    fun exportToJson(payload: FullBackupPayload, file: File): Boolean {
+        return try {
+            FileWriter(file).use { writer ->
+                gson.toJson(payload, writer)
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun importFromJson(file: File): FullBackupPayload? {
+        return try {
+            FileReader(file).use { reader ->
+                gson.fromJson(reader, FullBackupPayload::class.java)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+}
+package com.rajon.moneytracker.export
+
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
+import com.rajon.moneytracker.data.model.MonthlySummary
+import java.io.File
+import java.io.FileOutputStream
+
+object PdfReportGenerator {
+    fun generateMonthlyPdf(summary: MonthlySummary, file: File): Boolean {
+        return try {
+            val pdfDocument = PdfDocument()
+            val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size
+            val page = pdfDocument.startPage(pageInfo)
+            val canvas: Canvas = page.canvas
+            val paint = Paint().apply {
+                textSize = 14f
+                color = android.graphics.Color.BLACK
+            }
+
+            var y = 50f
+            canvas.drawText("MoneyTracker - Monthly Closing Report (${summary.yearMonth})", 50f, y, paint.apply { textSize = 18f; isFakeBoldText = true })
+            y += 40f
+            canvas.drawText("Total Income: ${summary.totalIncome}", 50f, y, paint.apply { textSize = 14f; isFakeBoldText = false })
+            y += 25f
+            canvas.drawText("Total Spent: ${summary.totalSpent}", 50f, y, paint.parseColorIfNeeded())
+            y += 25f
+            canvas.drawText("Saved Amount: ${summary.savedAmount}", 50f, y, paint)
+            y += 25f
+            canvas.drawText("Closing Bank Balance: ${summary.closingBankBalance}", 50f, y, paint)
+            y += 25f
+            canvas.drawText("Closing Cash in Hand: ${summary.closingCashInHand}", 50f, y, paint)
+
+            pdfDocument.finishPage(page)
+            FileOutputStream(file).use { out ->
+                pdfDocument.writeTo(out)
+            }
+            pdfDocument.close()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+}
+
+private fun Paint.parseColorIfNeeded(): Paint {
+    this.isFakeBoldText = false
+    return this
+}
+package com.rajon.moneytracker
+
+import android.os.Bundle
+import androidx.fragment.app.FragmentActivity
+import androidx.activity.compose.setContent
+import androidx.biometric.BiometricPrompt
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rajon.moneytracker.ui.navigation.AppNavHost
+import com.rajon.moneytracker.ui.screens.auth.LockScreen
+import com.rajon.moneytracker.ui.theme.MoneyTrackerTheme
+
+class MainActivity : FragmentActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+        super.onCreate(savedInstanceState)
+
+        val app = application as MoneyTrackerApp
+        val localPrefs = app.container.localPrefs
+        val authRepo = app.container.authRepository
+
+        setContent {
+            var isLocked by remember { mutableStateOf(localPrefs.isLocked == true) }
+            val userId by authRepo.currentUserIdFlow.collectAsStateWithLifecycle(initialValue = null)
+            val isLoggedIn = userId != null || authRepo.isLoggedIn
+
+            // If user is logged in and biometric lock is enabled in settings, trigger prompt on resume/start
+            LaunchedEffect(isLoggedIn) {
+                if (isLoggedIn && localPrefs.isLocked == true) {
+                    isLocked = true
+                }
+            }
+
+            MoneyTrackerTheme(darkTheme = isSystemInDarkTheme()) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    if (isLoggedIn && isLocked) {
+                        LockScreen(
+                            onUnlockSuccess = {
+                                isLocked = false
+                                localPrefs.isLocked = false
+                            },
+                            onBiometricRequested = {
+                                showBiometricPrompt(
+                                    onSuccess = {
+                                        isLocked = false
+                                        localPrefs.isLocked = false
+                                    }
+                                )
+                            }
+                        )
+                    } else {
+                        AppNavHost(appContainer = app.container)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showBiometricPrompt(onSuccess: () -> Unit) {
+        val executor = ContextCompat.getMainExecutor(this)
+        val biometricPrompt = BiometricPrompt(
+            this,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    onSuccess()
+                }
+            }
+        )
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Unlock MoneyTracker")
+            .setSubtitle("Authenticate to access your personal finance data")
+            .setAllowedAuthenticators(androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
+    }
+}package com.rajon.moneytracker
+
+import android.app.Application
+import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.rajon.moneytracker.data.di.AppContainer
+import com.rajon.moneytracker.worker.NotificationHelper
+import com.rajon.moneytracker.worker.DailyReminderWorker
+
+class MoneyTrackerApp : Application() {
+    lateinit var container: AppContainer
+        private set
+
+    override fun onCreate() {
+        super.onCreate()
+        FirebaseApp.initializeApp(this)
+
+        // Enable Firestore offline persistence
+        val firestoreSettings = FirebaseFirestoreSettings.Builder()
+            .setLocalCacheSettings(
+                com.google.firebase.firestore.PersistentCacheSettings.newBuilder().build()
+            )
+            .build()
+        FirebaseFirestore.getInstance().firestoreSettings = firestoreSettings
+
+        container = AppContainer(this)
+
+        // Create notification channels and schedule periodic WorkManager reminder
+        NotificationHelper.createNotificationChannels(this)
+        DailyReminderWorker.scheduleWork(this)
+    }
+}
+package com.rajon.moneytracker.ui.components
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun DonutChart(
+    data: Map<String, Double>,
+    modifier: Modifier = Modifier.size(200.dp)
+) {
+    val total = data.values.sum()
+    if (total <= 0.0) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Text(text = "No expenses recorded", style = MaterialTheme.typography.bodyMedium)
+        }
+        return
+    }
+
+    val colors = listOf(
+        Color(0xFFE53935), Color(0xFF1E88E5), Color(0xFF8E24AA),
+        Color(0xFF43A047), Color(0xFFFB8C00), Color(0xFF00ACC1), Color(0xFF7CB342)
+    )
+
+    Canvas(modifier = modifier) {
+        val strokeWidth = 40f
+        val diameter = size.minDimension - strokeWidth
+        val topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f)
+        val arcSize = Size(diameter, diameter)
+
+        var startAngle = -90f
+        data.entries.forEachIndexed { index, entry ->
+            val sweep = ((entry.value / total) * 360f).toFloat()
+            val color = colors[index % colors.size]
+
+            drawArc(
+                color = color,
+                startAngle = startAngle,
+                sweepAngle = sweep,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcSize,
+                style = Stroke(width = strokeWidth)
+            )
+            startAngle += sweep
+        }
+    }
+}
+
+@Composable
+fun DailyBarChart(
+    dailyTotals: Map<Int, Double>,
+    modifier: Modifier = Modifier.fillMaxWidth().height(180.dp)
+) {
+    val maxVal = dailyTotals.values.maxOrNull() ?: 1.0
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    Canvas(modifier = modifier.padding(8.dp)) {
+        val width = size.width
+        val height = size.height
+        val barWidth = (width / 31f).coerceAtLeast(4f)
+
+        dailyTotals.forEach { (day, amount) ->
+            val barHeight = if (maxVal > 0) (amount / maxVal * height).toFloat() else 0f
+            val x = (day - 1) * (width / 31f)
+            val y = height - barHeight
+
+            drawRect(
+                color = primaryColor,
+                topLeft = Offset(x, y),
+                size = Size(barWidth - 2f, barHeight)
+            )
+        }
+    }
+}
+
+@Composable
+fun SixMonthComparisonChart(
+    months: List<String>,
+    incomes: List<Double>,
+    expenses: List<Double>,
+    modifier: Modifier = Modifier.fillMaxWidth().height(200.dp)
+) {
+    val maxVal = (incomes + expenses).maxOrNull() ?: 1.0
+    val incomeColor = com.rajon.moneytracker.ui.theme.GreenSuccess
+    val expenseColor = MaterialTheme.colorScheme.error
+
+    Canvas(modifier = modifier.padding(16.dp)) {
+        val width = size.width
+        val height = size.height
+        val step = if (months.isNotEmpty()) width / months.size else width
+
+        incomes.forEachIndexed { i, inc ->
+            val x = i * step + step / 4f
+            val barH = (inc / maxVal * height).toFloat()
+            drawRect(
+                color = incomeColor,
+                topLeft = Offset(x, height - barH),
+                size = Size(step / 3f, barH)
+            )
+        }
+
+        expenses.forEachIndexed { i, exp ->
+            val x = i * step + step / 2f
+            val barH = (exp / maxVal * height).toFloat()
+            drawRect(
+                color = expenseColor,
+                topLeft = Offset(x, height - barH),
+                size = Size(step / 3f, barH)
+            )
+        }
+    }
+}
+
+@Composable
+fun CategoryTrendLineChart(
+    trendValues: List<Double>,
+    modifier: Modifier = Modifier.fillMaxWidth().height(160.dp)
+) {
+    val maxVal = trendValues.maxOrNull() ?: 1.0
+    val lineColor = MaterialTheme.colorScheme.primary
+
+    Canvas(modifier = modifier.padding(8.dp)) {
+        val width = size.width
+        val height = size.height
+        val stepX = if (trendValues.size > 1) width / (trendValues.size - 1) else width
+
+        for (i in 0 until trendValues.size - 1) {
+            val x1 = i * stepX
+            val y1 = height - (trendValues[i] / maxVal * height).toFloat()
+            val x2 = (i + 1) * stepX
+            val y2 = height - (trendValues[i + 1] / maxVal * height).toFloat()
+
+            drawLine(
+                color = lineColor,
+                start = Offset(x1, y1),
+                end = Offset(x2, y2),
+                strokeWidth = 4f
+            )
+        }
+    }
+}
+package com.rajon.moneytracker.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.rajon.moneytracker.ui.theme.TealDark
+import com.rajon.moneytracker.ui.theme.TealPrimary
+
+@Composable
+fun GradientCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(TealDark, TealPrimary)
+                    )
+                )
+                .padding(20.dp)
+        ) {
+            Column(content = content)
+        }
+    }
+}
+
+@Composable
+fun MonthSelectorBar(
+    currentYearMonth: String,
+    onPrevMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onPrevMonth) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowLeft,
+                contentDescription = "Previous Month"
+            )
+        }
+        Text(
+            text = com.rajon.moneytracker.util.Formatters.formatMonthTitle(currentYearMonth),
+            style = MaterialTheme.typography.titleLarge
+        )
+        IconButton(onClick = onNextMonth) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = "Next Month"
+            )
+        }
+    }
+}
+
+@Composable
+fun BudgetProgressBar(
+    title: String,
+    spent: Double,
+    limit: Double,
+    currencySymbol: String = "৳"
+) {
+    val pct = if (limit > 0.0) ((spent / limit)).toFloat().coerceIn(0f, 1.5f) else 0f
+    val color = when {
+        pct >= 1f -> MaterialTheme.colorScheme.error
+        pct >= 0.7f -> com.rajon.moneytracker.ui.theme.OrangeWarning
+        else -> com.rajon.moneytracker.ui.theme.GreenSuccess
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = title, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = "${com.rajon.moneytracker.util.Formatters.formatCurrency(spent, currencySymbol)} / ${com.rajon.moneytracker.util.Formatters.formatCurrency(limit, currencySymbol)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { pct.coerceAtMost(1f) },
+            modifier = Modifier.fillMaxWidth().height(8.dp),
+            color = color,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+    }
+}package com.rajon.moneytracker.ui.navigation
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.google.firebase.auth.FirebaseAuth
+import com.rajon.moneytracker.data.di.AppContainer
+import com.rajon.moneytracker.ui.screens.auth.AuthScreen
+import com.rajon.moneytracker.ui.screens.auth.AuthViewModel
+import com.rajon.moneytracker.ui.screens.budget.BudgetScreen
+import com.rajon.moneytracker.ui.screens.budget.BudgetViewModel
+import com.rajon.moneytracker.ui.screens.debts.DebtsScreen
+import com.rajon.moneytracker.ui.screens.debts.DebtsViewModel
+import com.rajon.moneytracker.ui.screens.history.HistoryScreen
+import com.rajon.moneytracker.ui.screens.history.HistoryViewModel
+import com.rajon.moneytracker.ui.screens.home.HomeScreen
+import com.rajon.moneytracker.ui.screens.home.HomeViewModel
+import com.rajon.moneytracker.ui.screens.more.MoreScreen
+import com.rajon.moneytracker.ui.screens.more.SettingsScreen
+import com.rajon.moneytracker.ui.screens.more.SettingsViewModel
+import com.rajon.moneytracker.ui.screens.savings.SavingsScreen
+import com.rajon.moneytracker.ui.screens.savings.SavingsViewModel
+import com.rajon.moneytracker.ui.screens.transactions.TransactionsScreen
+import com.rajon.moneytracker.ui.screens.transactions.TransactionsViewModel
+
+sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
+    object Home : BottomNavItem(NavRoutes.HOME, "Home", Icons.Default.Home)
+    object Transactions : BottomNavItem(NavRoutes.TRANSACTIONS, "Transactions", Icons.Default.ReceiptLong)
+    object Budget : BottomNavItem(NavRoutes.BUDGET, "Budget", Icons.Default.Assessment)
+    object Savings : BottomNavItem(NavRoutes.SAVINGS, "Savings", Icons.Default.Savings)
+    object More : BottomNavItem(NavRoutes.MORE, "More", Icons.Default.MoreHoriz)
+}
+
+@Composable
+fun AppNavHost(appContainer: AppContainer) {
+    val navController = rememberNavController()
+    var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val bottomNavItems = listOf(
+        BottomNavItem.Home,
+        BottomNavItem.Transactions,
+        BottomNavItem.Budget,
+        BottomNavItem.Savings,
+        BottomNavItem.More
+    )
+
+    val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+
+    Scaffold(
+        bottomBar = {
+            if (showBottomBar && isLoggedIn) {
+                NavigationBar {
+                    bottomNavItems.forEach { item ->
+                        NavigationBarItem(
+                            icon = { Icon(item.icon, contentDescription = item.title) },
+                            label = { Text(item.title) },
+                            selected = currentRoute == item.route,
+                            onClick = {
+                                if (currentRoute != item.route) {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = if (isLoggedIn) NavRoutes.HOME else NavRoutes.AUTH,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(NavRoutes.AUTH) {
+                AuthScreen(
+                    viewModel = AuthViewModel(appContainer.authRepository),
+                    onLoginSuccess = {
+                        isLoggedIn = true
+                        navController.navigate(NavRoutes.HOME) {
+                            popUpTo(NavRoutes.AUTH) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable(NavRoutes.HOME) {
+                HomeScreen(
+                    viewModel = HomeViewModel(appContainer.financeRepository),
+                    onNavigateToTransactions = { navController.navigate(NavRoutes.TRANSACTIONS) },
+                    onNavigateToBudget = { navController.navigate(NavRoutes.BUDGET) }
+                )
+            }
+            composable(NavRoutes.TRANSACTIONS) {
+                TransactionsScreen(
+                    viewModel = TransactionsViewModel(appContainer.financeRepository)
+                )
+            }
+            composable(NavRoutes.BUDGET) {
+                BudgetScreen(
+                    viewModel = BudgetViewModel(appContainer.financeRepository)
+                )
+            }
+            composable(NavRoutes.SAVINGS) {
+                SavingsScreen(
+                    viewModel = SavingsViewModel(appContainer.financeRepository)
+                )
+            }
+            composable(NavRoutes.MORE) {
+                MoreScreen(
+                    onNavigateToDebts = { navController.navigate(NavRoutes.DEBTS) },
+                    onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
+                    onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
+                    onLogout = {
+                        appContainer.authRepository.logout()
+                        isLoggedIn = false
+                        navController.navigate(NavRoutes.AUTH) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable(NavRoutes.DEBTS) {
+                DebtsScreen(
+                    viewModel = DebtsViewModel(appContainer.financeRepository),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.HISTORY) {
+                HistoryScreen(
+                    viewModel = HistoryViewModel(appContainer.financeRepository),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.SETTINGS) {
+                SettingsScreen(
+                    viewModel = SettingsViewModel(appContainer.financeRepository, appContainer.localPrefs),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+        }
+    }
+}package com.rajon.moneytracker.ui.navigation
+
+object NavRoutes {
+    const val AUTH = "auth"
+    const val HOME = "home"
+    const val TRANSACTIONS = "transactions"
+    const val BUDGET = "budget"
+    const val SAVINGS = "savings"
+    const val MORE = "more"
+    const val DEBTS = "debts"
+    const val HISTORY = "history"
+    const val SETTINGS = "settings"
+}
+package com.rajon.moneytracker.ui.screens.auth
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+@Composable
+fun AuthScreen(
+    viewModel: AuthViewModel,
+    onLoginSuccess: () -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isRegistering by remember { mutableStateOf(false) }
+    var resetSent by remember { mutableStateOf(false) }
+
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMsg by viewModel.errorMessage.collectAsStateWithLifecycle()
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = if (isRegistering) "Create Account" else "Welcome Back",
+                style = MaterialTheme.typography.headlineLarge
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email Address") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (errorMsg != null) {
+                Text(text = errorMsg!!, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (resetSent) {
+                Text(text = "Password reset email sent!", color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Button(
+                onClick = {
+                    if (isRegistering) {
+                        viewModel.register(email, password, onLoginSuccess)
+                    } else {
+                        viewModel.login(email, password, onLoginSuccess)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text(if (isRegistering) "Register" else "Login")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TextButton(onClick = { isRegistering = !isRegistering }) {
+                Text(if (isRegistering) "Already have an account? Login" else "Don't have an account? Register")
+            }
+
+            if (!isRegistering) {
+                TextButton(
+                    onClick = {
+                        if (email.isNotBlank()) {
+                            viewModel.forgotPassword(email) { resetSent = true }
+                        } else {
+                            // temporary prompt or error handling
+                        }
+                    }
+                ) {
+                    Text("Forgot Password?")
+                }
+            }
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.auth
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.repository.AuthRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class AuthViewModel(
+    private val authRepository: AuthRepository
+) : ViewModel() {
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    fun login(email: String, pass: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            val result = authRepository.login(email, pass)
+            _isLoading.value = false
+            result.onSuccess { onSuccess() }
+                .onFailure { _errorMessage.value = it.localizedMessage ?: "Login failed" }
+        }
+    }
+
+    fun register(email: String, pass: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            val result = authRepository.register(email, pass)
+            _isLoading.value = false
+            result.onSuccess { onSuccess() }
+                .onFailure { _errorMessage.value = it.localizedMessage ?: "Registration failed" }
+        }
+    }
+
+    fun forgotPassword(email: String, onSent: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = authRepository.sendPasswordReset(email)
+            _isLoading.value = false
+            result.onSuccess { onSent() }
+                .onFailure { _errorMessage.value = it.localizedMessage ?: "Failed to send reset email" }
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.auth
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun LockScreen(
+    onUnlockSuccess: () -> Unit,
+    onBiometricRequested: () -> Unit
+) {
+    LaunchedEffect(Unit) {
+        onBiometricRequested()
+    }
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "MoneyTracker Locked", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Authenticate with biometrics or device PIN to continue.", style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onBiometricRequested) {
+                Text("Unlock App")
+            }
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.budget
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.ExpenseCategory
+import com.rajon.moneytracker.ui.components.BudgetProgressBar
+import com.rajon.moneytracker.ui.components.MonthSelectorBar
+import com.rajon.moneytracker.util.DateUtils
+
+@Composable
+fun BudgetScreen(
+    viewModel: BudgetViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val currentYM by viewModel.currentYearMonth.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val budgetStatuses by viewModel.budgetStatuses.collectAsStateWithLifecycle()
+
+    var editingCategory by remember { mutableStateOf<ExpenseCategory?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        MonthSelectorBar(
+            currentYearMonth = currentYM,
+            onPrevMonth = {
+                val parts = currentYM.split("-")
+                if (parts.size == 2) {
+                    var y = parts[0].toInt()
+                    var m = parts[1].toInt() - 1
+                    if (m < 1) { m = 12; y -= 1 }
+                    viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
+                }
+            },
+            onNextMonth = {
+                val parts = currentYM.split("-")
+                if (parts.size == 2) {
+                    var y = parts[0].toInt()
+                    var m = parts[1].toInt() + 1
+                    if (m > 12) { m = 1; y += 1 }
+                    viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(text = "Category Budgets", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(categories) { cat ->
+                val status = budgetStatuses.find { it.categoryId == cat.id }
+                val spent = status?.spentAmount ?: 0.0
+                val limit = status?.limitAmount ?: 0.0
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { editingCategory = cat }
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = cat.name, style = MaterialTheme.typography.titleLarge)
+                            IconButton(onClick = { editingCategory = cat }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Limit")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        BudgetProgressBar(title = "", spent = spent, limit = limit)
+                    }
+                }
+            }
+        }
+    }
+
+    if (editingCategory != null) {
+        val cat = editingCategory!!
+        val currentStatus = budgetStatuses.find { it.categoryId == cat.id }
+        var limitInput by remember { mutableStateOf(currentStatus?.limitAmount?.toString() ?: "") }
+
+        AlertDialog(
+            onDismissRequest = { editingCategory = null },
+            title = { Text("Set Budget for ${cat.name}") },
+            text = {
+                OutlinedTextField(
+                    value = limitInput,
+                    onValueChange = { limitInput = it },
+                    label = { Text("Monthly Limit Amount") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val lim = limitInput.toDoubleOrNull() ?: 0.0
+                    viewModel.saveBudget(cat.id, cat.name, lim)
+                    editingCategory = null
+                }) {
+                    Text("Save Limit")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingCategory = null }) { Text("Cancel") }
+            }
+        )
+    }
+}
+package com.rajon.moneytracker.ui.screens.budget
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.model.*
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import com.rajon.moneytracker.domain.BudgetEvaluator
+import com.rajon.moneytracker.domain.BudgetStatus
+import com.rajon.moneytracker.util.DateUtils
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+class BudgetViewModel(
+    private val financeRepository: FinanceRepository
+) : ViewModel() {
+
+    private val _currentYearMonth = MutableStateFlow(DateUtils.getCurrentYearMonth())
+    val currentYearMonth: StateFlow<String> = _currentYearMonth.asStateFlow()
+
+    val categories: StateFlow<List<ExpenseCategory>> = financeRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val budgets: StateFlow<List<CategoryBudget>> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeBudgets(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val transactions: StateFlow<List<Transaction>> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeTransactions(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val monthSetup: StateFlow<MonthSetup?> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeMonthSetup(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val budgetStatuses: StateFlow<List<BudgetStatus>> = combine(
+        budgets, transactions, monthSetup
+    ) { bList, txs, setup ->
+        BudgetEvaluator.evaluateBudgets(
+            budgets = bList,
+            transactions = txs,
+            overallLimit = setup?.overallBudgetLimit ?: 0.0,
+            extraLimit = setup?.extraSpendingLimit ?: 0.0
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun changeMonth(yearMonth: String) {
+        _currentYearMonth.value = yearMonth
+    }
+
+    fun saveBudget(categoryId: String, categoryName: String, limitAmount: Double) {
+        viewModelScope.launch {
+            val budget = CategoryBudget(
+                id = "${_currentYearMonth.value}_$categoryId",
+                yearMonth = _currentYearMonth.value,
+                categoryId = categoryId,
+                categoryName = categoryName,
+                limitAmount = limitAmount
+            )
+            financeRepository.saveBudget(budget)
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.debts
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.DebtItem
+import com.rajon.moneytracker.data.model.DebtType
+import com.rajon.moneytracker.util.Formatters
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DebtsScreen(
+    onBack: () -> Unit,
+    viewModel: DebtsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val debts by viewModel.debts.collectAsStateWithLifecycle()
+    var showAddDialog by remember { mutableStateOf(false) }
+    var selectedDebtForPayment by remember { mutableStateOf<DebtItem?>(null) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Debts & Loans Tracker") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Debt")
+            }
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp)
+        ) {
+            if (debts.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    Text(text = "No active loans or debts recorded.")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(debts, key = { it.id }) { debt ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { selectedDebtForPayment = debt }
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = debt.personName, style = MaterialTheme.typography.titleLarge)
+                                    Text(text = debt.type, style = MaterialTheme.typography.labelSmall)
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Paid: ${Formatters.formatCurrency(debt.paidAmount)} / Total: ${Formatters.formatCurrency(debt.totalAmount)}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = "Status: ${debt.status}", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        AddDebtDialog(
+            onDismiss = { showAddDialog = false },
+            onSave = { name, total, type ->
+                viewModel.saveDebt(DebtItem(personName = name, totalAmount = total, type = type))
+                showAddDialog = false
+            }
+        )
+    }
+
+    if (selectedDebtForPayment != null) {
+        DebtPaymentDialog(
+            debtName = selectedDebtForPayment!!.personName,
+            onDismiss = { selectedDebtForPayment = null },
+            onConfirm = { amount, source, note, createExp ->
+                viewModel.addPayment(selectedDebtForPayment!!, amount, source, note, createExp)
+                selectedDebtForPayment = null
+            }
+        )
+    }
+}
+
+@Composable
+fun AddDebtDialog(onDismiss: () -> Unit, onSave: (String, Double, String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var total by remember { mutableStateOf("") }
+    var isIowe by remember { mutableStateOf(true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Loan / Debt") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Person / Lender Name") }, singleLine = true)
+                OutlinedTextField(value = total, onValueChange = { total = it }, label = { Text("Total Amount") }, singleLine = true)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Checkbox(checked = isIowe, onCheckedChange = { isIowe = it })
+                    Text("I Owe (Borrowing)")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val t = total.toDoubleOrNull() ?: 0.0
+                if (name.isNotBlank() && t > 0) {
+                    onSave(name, t, if (isIowe) DebtType.I_OWE.name else DebtType.OWED_TO_ME.name)
+                }
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun DebtPaymentDialog(debtName: String, onDismiss: () -> Unit, onConfirm: (Double, String, String, Boolean) -> Unit) {
+    var amount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var createExp by remember { mutableStateOf(true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Record Payment for $debtName") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Payment Amount") }, singleLine = true)
+                OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Note") }, singleLine = true)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Checkbox(checked = createExp, onCheckedChange = { createExp = it })
+                    Text("Create Expense in Debt Payment")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val a = amount.toDoubleOrNull() ?: 0.0
+                if (a > 0) onConfirm(a, "BANK", note, createExp)
+            }) { Text("Confirm") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+package com.rajon.moneytracker.ui.screens.debts
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.model.DebtItem
+import com.rajon.moneytracker.data.model.DebtPaymentRecord
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import com.rajon.moneytracker.util.DateUtils
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+class DebtsViewModel(
+    private val financeRepository: FinanceRepository
+) : ViewModel() {
+
+    val debts: StateFlow<List<DebtItem>> = financeRepository.observeDebts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun saveDebt(debt: DebtItem) {
+        viewModelScope.launch {
+            financeRepository.saveDebt(debt.copy(createdInYearMonth = DateUtils.getCurrentYearMonth()))
+        }
+    }
+
+    fun deleteDebt(debtId: String) {
+        viewModelScope.launch {
+            financeRepository.deleteDebt(debtId)
+        }
+    }
+
+    fun addPayment(debt: DebtItem, amount: Double, paymentSource: String, note: String, createExpense: Boolean) {
+        viewModelScope.launch {
+            val payment = DebtPaymentRecord(
+                debtId = debt.id,
+                debtType = debt.type,
+                yearMonth = DateUtils.getCurrentYearMonth(),
+                amount = amount,
+                dateMillis = System.currentTimeMillis(),
+                paymentSource = paymentSource,
+                note = note
+            )
+            financeRepository.addDebtPayment(debt, payment, createExpense)
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.history
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.util.Formatters
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryScreen(
+    onBack: () -> Unit,
+    viewModel: HistoryViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val summaries by viewModel.summaries.collectAsStateWithLifecycle()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("History & Monthly Reports") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp)
+        ) {
+            if (summaries.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    Text(text = "No monthly closing reports available yet.")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(summaries, key = { it.yearMonth }) { summary ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(text = Formatters.formatMonthTitle(summary.yearMonth), style = MaterialTheme.typography.titleLarge)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(text = "Income: ${Formatters.formatCurrency(summary.totalIncome)}", style = MaterialTheme.typography.bodyMedium)
+                                Text(text = "Spent: ${Formatters.formatCurrency(summary.totalSpent)}", style = MaterialTheme.typography.bodyMedium)
+                                Text(text = "Saved: ${Formatters.formatCurrency(summary.savedAmount)}", style = MaterialTheme.typography.bodyMedium, color = com.rajon.moneytracker.ui.theme.GreenSuccess)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.history
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.model.MonthlySummary
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import kotlinx.coroutines.flow.*
+
+class HistoryViewModel(
+    financeRepository: FinanceRepository
+) : ViewModel() {
+
+    val summaries: StateFlow<List<MonthlySummary>> = financeRepository.observeMonthlySummaries()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+}
+package com.rajon.moneytracker.ui.screens.home
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Atm
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.MonthSetup
+import com.rajon.moneytracker.ui.components.*
+import com.rajon.moneytracker.util.DateUtils
+import com.rajon.moneytracker.util.Formatters
+
+@Composable
+fun HomeScreen(
+    onNavigateToTransactions: () -> Unit,
+    onNavigateToBudget: () -> Unit,
+    viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val currentYM by viewModel.currentYearMonth.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val monthSetup by viewModel.monthSetup.collectAsStateWithLifecycle()
+    val breakdown by viewModel.balanceBreakdown.collectAsStateWithLifecycle()
+    val recurringList by viewModel.recurringList.collectAsStateWithLifecycle()
+
+    var showSetupDialog by remember { mutableStateOf(false) }
+    var showWithdrawalDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(monthSetup) {
+        if (monthSetup == null) {
+            showSetupDialog = true
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                MonthSelectorBar(
+                    currentYearMonth = currentYM,
+                    onPrevMonth = {
+                        val parts = currentYM.split("-")
+                        if (parts.size == 2) {
+                            var y = parts[0].toInt()
+                            var m = parts[1].toInt() - 1
+                            if (m < 1) { m = 12; y -= 1 }
+                            viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
+                        }
+                    },
+                    onNextMonth = {
+                        val parts = currentYM.split("-")
+                        if (parts.size == 2) {
+                            var y = parts[0].toInt()
+                            var m = parts[1].toInt() + 1
+                            if (m > 12) { m = 1; y += 1 }
+                            viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
+                        }
+                    }
+                )
+            }
+
+            item {
+                GradientCard {
+                    Text(
+                        text = "Bank Balance Left",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = Formatters.formatCurrency(breakdown.bankBalanceLeft, settings.currencySymbol),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Cash in Hand",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = Formatters.formatCurrency(breakdown.cashInHand, settings.currencySymbol),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Total Spent",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = Formatters.formatCurrency(breakdown.totalSpent, settings.currencySymbol),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val daysLeft = DateUtils.getDaysLeftInMonth()
+                    val safePerDay = if (daysLeft > 0) (breakdown.bankBalanceLeft / daysLeft).coerceAtLeast(0.0) else 0.0
+                    Text(
+                        text = "Safe to spend: ${Formatters.formatCurrency(safePerDay, settings.currencySymbol)} / day ($daysLeft days left)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onNavigateToTransactions,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Transactions")
+                    }
+                    OutlinedButton(
+                        onClick = onNavigateToBudget,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Budgets")
+                    }
+                }
+            }
+
+            if (monthSetup == null) {
+                item {
+                    Button(
+                        onClick = { showSetupDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Configure Salary & Opening Balance for This Month")
+                    }
+                }
+            }
+
+            val unpaidRecurring = recurringList.filter { rec ->
+                rec.active && !rec.paidMonths.contains(currentYM) && !rec.skippedMonths.contains(currentYM)
+            }
+            if (unpaidRecurring.isNotEmpty()) {
+                item {
+                    Text(text = "Upcoming & Overdue Payments", style = MaterialTheme.typography.titleLarge)
+                }
+                items(unpaidRecurring) { rec ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = rec.name, style = MaterialTheme.typography.titleLarge)
+                                Text(
+                                    text = "Due Day: ${rec.dueDay} • ${Formatters.formatCurrency(rec.amount, settings.currencySymbol)}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Row {
+                                TextButton(onClick = { viewModel.markRecurringSkipped(rec) }) {
+                                    Text("Skip")
+                                }
+                                Button(onClick = { viewModel.markRecurringPaid(rec) }) {
+                                    Text("Pay")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(72.dp))
+            }
+        }
+
+        FloatingActionButton(
+            onClick = { showWithdrawalDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Atm, contentDescription = "Quick Withdrawal / ATM")
+        }
+    }
+
+    if (showSetupDialog) {
+        MonthSetupDialog(
+            initial = monthSetup,
+            onDismiss = { showSetupDialog = false },
+            onSave = { setup ->
+                viewModel.saveMonthSetup(setup)
+                showSetupDialog = false
+            }
+        )
+    }
+
+    if (showWithdrawalDialog) {
+        QuickWithdrawalDialog(
+            onDismiss = { showWithdrawalDialog = false },
+            onConfirm = { amt ->
+                viewModel.recordQuickWithdrawal(amt)
+                showWithdrawalDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun MonthSetupDialog(
+    initial: MonthSetup?,
+    onDismiss: () -> Unit,
+    onSave: (MonthSetup) -> Unit
+) {
+    var salary by remember { mutableStateOf(initial?.salary?.toString() ?: "") }
+    var extraInc by remember { mutableStateOf(initial?.extraIncome?.toString() ?: "") }
+    var openingBal by remember { mutableStateOf(initial?.openingBankBalance?.toString() ?: "") }
+    var overallLimit by remember { mutableStateOf(initial?.overallBudgetLimit?.toString() ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Monthly Budget & Balance Setup") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = salary,
+                    onValueChange = { salary = it },
+                    label = { Text("Monthly Salary") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = extraInc,
+                    onValueChange = { extraInc = it },
+                    label = { Text("Extra Income (Optional)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = openingBal,
+                    onValueChange = { openingBal = it },
+                    label = { Text("Opening Bank Balance") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = overallLimit,
+                    onValueChange = { overallLimit = it },
+                    label = { Text("Overall Spending Limit (Optional)") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val s = salary.toDoubleOrNull() ?: 0.0
+                val e = extraInc.toDoubleOrNull() ?: 0.0
+                val o = openingBal.toDoubleOrNull() ?: 0.0
+                val l = overallLimit.toDoubleOrNull() ?: 0.0
+                onSave(
+                    MonthSetup(
+                        salary = s,
+                        extraIncome = e,
+                        openingBankBalance = o,
+                        overallBudgetLimit = l
+                    )
+                )
+            }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun QuickWithdrawalDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var amountText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Record ATM / Bank Withdrawal") },
+        text = {
+            OutlinedTextField(
+                value = amountText,
+                onValueChange = { amountText = it },
+                label = { Text("Withdrawal Amount") },
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            Button(onClick = {
+                val amt = amountText.toDoubleOrNull() ?: 0.0
+                if (amt > 0.0) onConfirm(amt)
+            }) {
+                Text("Record")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}package com.rajon.moneytracker.ui.screens.home
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.model.*
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import com.rajon.moneytracker.domain.BalanceBreakdown
+import com.rajon.moneytracker.domain.BalanceCalculator
+import com.rajon.moneytracker.util.DateUtils
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+class HomeViewModel(
+    private val financeRepository: FinanceRepository
+) : ViewModel() {
+
+    private val _currentYearMonth = MutableStateFlow(DateUtils.getCurrentYearMonth())
+    val currentYearMonth: StateFlow<String> = _currentYearMonth.asStateFlow()
+
+    val settings: StateFlow<UserSettings> = financeRepository.observeSettings()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserSettings())
+
+    val monthSetup: StateFlow<MonthSetup?> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeMonthSetup(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val transactions: StateFlow<List<Transaction>> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeTransactions(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val savingsDeposits: StateFlow<List<SavingsDeposit>> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeMonthDeposits(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val debtPayments: StateFlow<List<DebtPaymentRecord>> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeMonthDebtPayments(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val recurringList: StateFlow<List<RecurringPayment>> = financeRepository.observeRecurring()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val debtsList: StateFlow<List<DebtItem>> = financeRepository.observeDebts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- FIXED: Handled null monthSetup safely for brand-new users ---
+    val balanceBreakdown: StateFlow<BalanceBreakdown> = combine(
+        monthSetup, transactions, savingsDeposits, debtPayments
+    ) { setup, txs, deps, pays ->
+        val safeSetup = setup ?: MonthSetup(yearMonth = _currentYearMonth.value)
+        BalanceCalculator.calculate(safeSetup, txs, deps, pays)
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        BalanceBreakdown(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    )
+
+    init {
+        viewModelScope.launch {
+            financeRepository.ensureDefaultCategories()
+        }
+    }
+
+    fun changeMonth(yearMonth: String) {
+        _currentYearMonth.value = yearMonth
+    }
+
+    fun saveMonthSetup(setup: MonthSetup) {
+        viewModelScope.launch {
+            financeRepository.saveMonthSetup(setup.copy(yearMonth = _currentYearMonth.value))
+        }
+    }
+
+    fun recordQuickWithdrawal(amount: Double) {
+        viewModelScope.launch {
+            val tx = Transaction(
+                yearMonth = _currentYearMonth.value,
+                type = TransactionType.WITHDRAWAL.name,
+                amount = amount,
+                dateMillis = System.currentTimeMillis(),
+                paymentSource = PaymentSource.BANK.name,
+                note = "ATM Withdrawal"
+            )
+            financeRepository.saveTransaction(tx)
+        }
+    }
+
+    fun markRecurringPaid(item: RecurringPayment) {
+        viewModelScope.launch {
+            financeRepository.markRecurringPaid(item, _currentYearMonth.value, System.currentTimeMillis())
+        }
+    }
+
+    fun markRecurringSkipped(item: RecurringPayment) {
+        viewModelScope.launch {
+            financeRepository.markRecurringSkipped(item, _currentYearMonth.value)
+        }
+    }
+}package com.rajon.moneytracker.ui.screens.more
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoreScreen(
+    onNavigateToDebts: () -> Unit,
+    onNavigateToHistory: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("More & Tools") })
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToDebts) {
+                    ListItem(
+                        headlineContent = { Text("Debts & Loans Tracker") },
+                        leadingContent = { Icon(Icons.Default.Payments, contentDescription = null) }
+                    )
+                }
+            }
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToHistory) {
+                    ListItem(
+                        headlineContent = { Text("History & Monthly Reports") },
+                        leadingContent = { Icon(Icons.Default.History, contentDescription = null) }
+                    )
+                }
+            }
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToSettings) {
+                    ListItem(
+                        headlineContent = { Text("Settings") },
+                        leadingContent = { Icon(Icons.Default.Settings, contentDescription = null) }
+                    )
+                }
+            }
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
+                    ListItem(
+                        headlineContent = { Text("Logout") },
+                        leadingContent = { Icon(Icons.Default.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                    )
+                }
+            }
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.more
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    var currency by remember(settings.currencySymbol) { mutableStateOf(settings.currencySymbol) }
+    var biometric by remember(settings.biometricEnabled) { mutableStateOf(settings.biometricEnabled) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = currency,
+                onValueChange = { currency = it },
+                label = { Text("Currency Symbol") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Enable Biometric / PIN Lock")
+                Switch(checked = biometric, onCheckedChange = { biometric = it })
+            }
+
+            Button(
+                onClick = {
+                    viewModel.updateSettings(settings.copy(currencySymbol = currency, biometricEnabled = biometric))
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save Settings")
+            }
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.more
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.local.LocalPrefs
+import com.rajon.moneytracker.data.model.UserSettings
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class SettingsViewModel(
+    private val financeRepository: FinanceRepository,
+    private val localPrefs: LocalPrefs
+) : ViewModel() {
+
+    val settings: StateFlow<UserSettings> = financeRepository.observeSettings()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserSettings())
+
+    fun updateSettings(newSettings: UserSettings) {
+        viewModelScope.launch {
+            financeRepository.updateSettings(newSettings)
+            localPrefs.isLocked = newSettings.biometricEnabled
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.savings
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.SavingsGoal
+import com.rajon.moneytracker.util.Formatters
+
+@Composable
+fun SavingsScreen(
+    viewModel: SavingsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val goals by viewModel.goals.collectAsStateWithLifecycle()
+    var showAddGoalDialog by remember { mutableStateOf(false) }
+    var selectedGoalForDeposit by remember { mutableStateOf<SavingsGoal?>(null) }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddGoalDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Savings Goal")
+            }
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp)
+        ) {
+            Text(text = "Savings Goals", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (goals.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    Text(text = "No savings goals created yet. Tap + to add one.")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(goals, key = { it.id }) { goal ->
+                        val pct = if (goal.targetAmount > 0) (goal.currentAmount / goal.targetAmount).toFloat().coerceIn(0f, 1f) else 0f
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { selectedGoalForDeposit = goal }
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = goal.name, style = MaterialTheme.typography.titleLarge)
+                                    Text(text = "${(pct * 100).toInt()}%", style = MaterialTheme.typography.titleLarge)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "${Formatters.formatCurrency(goal.currentAmount)} / ${Formatters.formatCurrency(goal.targetAmount)}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = { pct },
+                                    modifier = Modifier.fillMaxWidth().height(8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddGoalDialog) {
+        AddGoalDialog(
+            onDismiss = { showAddGoalDialog = false },
+            onSave = { name, target ->
+                viewModel.saveGoal(SavingsGoal(name = name, targetAmount = target))
+                showAddGoalDialog = false
+            }
+        )
+    }
+
+    if (selectedGoalForDeposit != null) {
+        DepositDialog(
+            goalName = selectedGoalForDeposit!!.name,
+            onDismiss = { selectedGoalForDeposit = null },
+            onConfirm = { amount, isWd, takeBank, note ->
+                viewModel.addDeposit(selectedGoalForDeposit!!, amount, isWd, takeBank, note)
+                selectedGoalForDeposit = null
+            }
+        )
+    }
+}
+
+@Composable
+fun AddGoalDialog(onDismiss: () -> Unit, onSave: (String, Double) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var target by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create Savings Goal") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Goal Name") }, singleLine = true)
+                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Target Amount") }, singleLine = true)
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val t = target.toDoubleOrNull() ?: 0.0
+                if (name.isNotBlank() && t > 0) onSave(name, t)
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun DepositDialog(goalName: String, onDismiss: () -> Unit, onConfirm: (Double, Boolean, Boolean, String) -> Unit) {
+    var amount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var isWithdrawal by remember { mutableStateOf(false) }
+    var takeFromBank by remember { mutableStateOf(true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Deposit / Withdraw for $goalName") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") }, singleLine = true)
+                OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Note") }, singleLine = true)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Checkbox(checked = isWithdrawal, onCheckedChange = { isWithdrawal = it })
+                    Text("Is Withdrawal from Goal")
+                }
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Checkbox(checked = takeFromBank, onCheckedChange = { takeFromBank = it })
+                    Text("Deduct / Refund Bank Balance")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val a = amount.toDoubleOrNull() ?: 0.0
+                if (a > 0) onConfirm(a, isWithdrawal, takeFromBank, note)
+            }) { Text("Confirm") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+package com.rajon.moneytracker.ui.screens.savings
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.model.SavingsDeposit
+import com.rajon.moneytracker.data.model.SavingsGoal
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import com.rajon.moneytracker.util.DateUtils
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+class SavingsViewModel(
+    private val financeRepository: FinanceRepository
+) : ViewModel() {
+
+    val goals: StateFlow<List<SavingsGoal>> = financeRepository.observeGoals()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun saveGoal(goal: SavingsGoal) {
+        viewModelScope.launch {
+            financeRepository.saveGoal(goal)
+        }
+    }
+
+    fun deleteGoal(goalId: String) {
+        viewModelScope.launch {
+            financeRepository.deleteGoal(goalId)
+        }
+    }
+
+    fun addDeposit(goal: SavingsGoal, amount: Double, isWithdrawal: Boolean, takeFromBank: Boolean, note: String) {
+        viewModelScope.launch {
+            val deposit = SavingsDeposit(
+                goalId = goal.id,
+                yearMonth = DateUtils.getCurrentYearMonth(),
+                amount = amount,
+                isWithdrawal = isWithdrawal,
+                takeFromBank = takeFromBank,
+                dateMillis = System.currentTimeMillis(),
+                note = note
+            )
+            financeRepository.addGoalDeposit(goal, deposit)
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.transactions
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.PaymentSource
+import com.rajon.moneytracker.data.model.Transaction
+import com.rajon.moneytracker.data.model.TransactionType
+import com.rajon.moneytracker.ui.components.MonthSelectorBar
+import com.rajon.moneytracker.util.DateUtils
+import com.rajon.moneytracker.util.Formatters
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TransactionsScreen(
+    viewModel: TransactionsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val currentYM by viewModel.currentYearMonth.collectAsStateWithLifecycle()
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingTx by remember { mutableStateOf<Transaction?>(null) }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Transaction")
+            }
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp)
+        ) {
+            MonthSelectorBar(
+                currentYearMonth = currentYM,
+                onPrevMonth = {
+                    val parts = currentYM.split("-")
+                    if (parts.size == 2) {
+                        var y = parts[0].toInt()
+                        var m = parts[1].toInt() - 1
+                        if (m < 1) { m = 12; y -= 1 }
+                        viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
+                    }
+                },
+                onNextMonth = {
+                    val parts = currentYM.split("-")
+                    if (parts.size == 2) {
+                        var y = parts[0].toInt()
+                        var m = parts[1].toInt() + 1
+                        if (m > 12) { m = 1; y += 1 }
+                        viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (transactions.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "No transactions found for this month.", style = MaterialTheme.typography.bodyMedium)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(transactions, key = { it.id }) { tx ->
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    viewModel.deleteTransaction(tx.id)
+                                    true
+                                } else false
+                            }
+                        )
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        ) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { editingTx = tx }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = tx.categoryName.ifBlank { tx.type },
+                                            style = MaterialTheme.typography.titleLarge
+                                        )
+                                        Text(
+                                            text = "${Formatters.formatDate(tx.dateMillis)} • ${tx.paymentSource}",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        if (tx.note.isNotBlank()) {
+                                            Text(text = tx.note, style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                    Text(
+                                        text = Formatters.formatCurrency(tx.amount),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = if (tx.type == TransactionType.INCOME.name) com.rajon.moneytracker.ui.theme.GreenSuccess else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddDialog || editingTx != null) {
+        AddEditTransactionSheet(
+            transaction = editingTx,
+            categories = categories,
+            currentYearMonth = currentYM,
+            onDismiss = {
+                showAddDialog = false
+                editingTx = null
+            },
+            onSave = { tx ->
+                viewModel.saveTransaction(tx)
+                showAddDialog = false
+                editingTx = null
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEditTransactionSheet(
+    transaction: Transaction?,
+    categories: List<com.rajon.moneytracker.data.model.ExpenseCategory>,
+    currentYearMonth: String,
+    onDismiss: () -> Unit,
+    onSave: (Transaction) -> Unit
+) {
+    var amount by remember { mutableStateOf(transaction?.amount?.toString() ?: "") }
+    var note by remember { mutableStateOf(transaction?.note ?: "") }
+    var selectedType by remember { mutableStateOf(transaction?.type ?: TransactionType.EXPENSE.name) }
+    var selectedSource by remember { mutableStateOf(transaction?.paymentSource ?: PaymentSource.CASH.name) }
+    var selectedCategory by remember { mutableStateOf(transaction?.categoryId ?: (categories.firstOrNull()?.id ?: "")) }
+    var isExtra by remember { mutableStateOf(transaction?.isExtra ?: false) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = if (transaction == null) "Add Transaction" else "Edit Transaction",
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it },
+                label = { Text("Amount") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("Note (Optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { selectedType = TransactionType.EXPENSE.name },
+                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedType == TransactionType.EXPENSE.name) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Text("Expense")
+                }
+                Button(
+                    onClick = { selectedType = TransactionType.INCOME.name },
+                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedType == TransactionType.INCOME.name) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Text("Income")
+                }
+                Button(
+                    onClick = { selectedType = TransactionType.WITHDRAWAL.name },
+                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedType == TransactionType.WITHDRAWAL.name) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Text("Withdrawal")
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Extra (Unplanned Expense)")
+                Switch(checked = isExtra, onCheckedChange = { isExtra = it })
+            }
+
+            Button(
+                onClick = {
+                    val amt = amount.toDoubleOrNull() ?: 0.0
+                    val catObj = categories.find { it.id == selectedCategory }
+                    if (amt > 0.0) {
+                        onSave(
+                            (transaction ?: Transaction(id = java.util.UUID.randomUUID().toString())).copy(
+                                yearMonth = currentYearMonth,
+                                amount = amt,
+                                type = selectedType,
+                                paymentSource = selectedSource,
+                                categoryId = selectedCategory,
+                                categoryName = catObj?.name ?: "General",
+                                note = note,
+                                isExtra = isExtra,
+                                dateMillis = transaction?.dateMillis ?: System.currentTimeMillis()
+                            )
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save Transaction")
+            }
+        }
+    }
+}
+package com.rajon.moneytracker.ui.screens.transactions
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.model.*
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import com.rajon.moneytracker.util.DateUtils
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
+class TransactionsViewModel(
+    private val financeRepository: FinanceRepository
+) : ViewModel() {
+
+    private val _currentYearMonth = MutableStateFlow(DateUtils.getCurrentYearMonth())
+    val currentYearMonth: StateFlow<String> = _currentYearMonth.asStateFlow()
+
+    val categories: StateFlow<List<ExpenseCategory>> = financeRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val transactions: StateFlow<List<Transaction>> = _currentYearMonth.flatMapLatest { ym ->
+        financeRepository.observeTransactions(ym)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun changeMonth(yearMonth: String) {
+        _currentYearMonth.value = yearMonth
+    }
+
+    fun saveTransaction(tx: Transaction) {
+        viewModelScope.launch {
+            val finalTx = if (tx.yearMonth.isBlank()) tx.copy(yearMonth = _currentYearMonth.value) else tx
+            financeRepository.saveTransaction(finalTx)
+        }
+    }
+
+    fun deleteTransaction(txId: String) {
+        viewModelScope.launch {
+            financeRepository.deleteTransaction(txId)
+        }
+    }
+}
+package com.rajon.moneytracker.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val TealPrimary = Color(0xFF00796B)
+val TealDark = Color(0xFF004D40)
+val TealLight = Color(0xFF48A999)
+val MintAccent = Color(0xFF26A69A)
+val MintLight = Color(0xFFA7FFEB)
+
+val BackgroundLight = Color(0xFFF7F9F9)
+val SurfaceLight = Color(0xFFFFFFFF)
+val OnSurfaceLight = Color(0xFF1A1C1E)
+
+val BackgroundDark = Color(0xFF111414)
+val SurfaceDark = Color(0xFF1C2020)
+val OnSurfaceDark = Color(0xFFE1E3E3)
+
+val RedError = Color(0xFFBA1A1A)
+val OrangeWarning = Color(0xFFD97706)
+val GreenSuccess = Color(0xFF16A34A)
+package com.rajon.moneytracker.ui.theme
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+
+private val LightColorScheme = lightColorScheme(
+    primary = TealPrimary,
+    onPrimary = Color.White,
+    primaryContainer = MintLight,
+    onPrimaryContainer = TealDark,
+    secondary = MintAccent,
+    onSecondary = Color.White,
+    background = BackgroundLight,
+    surface = SurfaceLight,
+    onSurface = OnSurfaceLight,
+    error = RedError
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = TealLight,
+    onPrimary = TealDark,
+    primaryContainer = TealDark,
+    onPrimaryContainer = MintLight,
+    secondary = MintAccent,
+    onSecondary = Color.Black,
+    background = BackgroundDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    error = RedError
+)
+
+@Composable
+fun MoneyTrackerTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
+}
+package com.rajon.moneytracker.ui.theme
+
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+val Typography = Typography(
+    headlineLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp
+    ),
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 18.sp,
+        lineHeight = 24.sp
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 24.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 16.sp
+    )
+)
+package com.rajon.moneytracker.util
+
+import java.util.Calendar
+
+object DateUtils {
+    fun getCurrentYearMonth(): String {
+        val cal = Calendar.getInstance()
+        return formatYearMonth(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1)
+    }
+
+    fun formatYearMonth(year: Int, month: Int): String {
+        return String.format(java.util.Locale.US, "%d-%02d", year, month)
+    }
+
+    fun getDaysLeftInMonth(): Int {
+        val cal = Calendar.getInstance()
+        val today = cal.get(Calendar.DAY_OF_MONTH)
+        val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        return (maxDay - today).coerceAtLeast(1)
+    }
+
+    fun clampDueDay(year: Int, month: Int, dueDay: Int): Int {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        return dueDay.coerceIn(1, maxDay)
+    }
+}
+package com.rajon.moneytracker.util
+
+import java.text.NumberFormat
+import java.util.Locale
+
+object Formatters {
+    fun formatCurrency(amount: Double, symbol: String = "৳"): String {
+        val formatter = NumberFormat.getNumberInstance(Locale.US).apply {
+            maximumFractionDigits = 2
+            minimumFractionDigits = 0
+        }
+        return "$symbol ${formatter.format(amount)}"
+    }
+
+    fun formatDate(millis: Long): String {
+        val sdf = java.text.SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        return sdf.format(java.util.Date(millis))
+    }
+
+    fun formatMonthTitle(yearMonth: String): String {
+        // yearMonth format: "YYYY-MM"
+        try {
+            val parts = yearMonth.split("-")
+            if (parts.size == 2) {
+                val year = parts[0].toInt()
+                val month = parts[1].toInt()
+                val cal = java.util.Calendar.getInstance().apply {
+                    set(java.util.Calendar.YEAR, year)
+                    set(java.util.Calendar.MONTH, month - 1)
+                }
+                val sdf = java.text.SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+                return sdf.format(cal.time)
+            }
+        } catch (_: Exception) {}
+        return yearMonth
+    }
+}
+package com.rajon.moneytracker.worker
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            DailyReminderWorker.scheduleWork(context)
+        }
+    }
+}
+package com.rajon.moneytracker.worker
+
+import android.content.Context
+import androidx.work.*
+import com.rajon.moneytracker.data.repository.FirestoreFinanceRepository
+import com.rajon.moneytracker.util.DateUtils
+import java.util.Calendar
+import java.util.concurrent.TimeUnit
+
+class DailyReminderWorker(
+    appContext: Context,
+    workerParams: WorkerParameters
+) : CoroutineWorker(appContext, workerParams) {
+
+    override suspend fun doWork(): Result {
+        return try {
+            val repo = FirestoreFinanceRepository()
+            val snapshot = repo.getSnapshotForWorker()
+            val currentYM = DateUtils.getCurrentYearMonth()
+            val currentDay = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+
+            // Check recurring payments due soon or overdue
+            for (rec in snapshot.recurringList) {
+                if (!rec.active) continue
+                if (rec.paidMonths.contains(currentYM) || rec.skippedMonths.contains(currentYM)) continue
+
+                val dueDay = rec.dueDay
+                val diff = dueDay - currentDay
+                if (diff in 0..rec.remindDaysBefore || diff < 0) {
+                    val statusText = if (diff < 0) "Overdue by ${-diff} days!" else "Due in $diff days"
+                    NotificationHelper.showReminderNotification(
+                        applicationContext,
+                        "Recurring Bill Reminder",
+                        "${rec.name} (${rec.amount}) is $statusText",
+                        rec.id.hashCode()
+                    )
+                }
+            }
+
+            Result.success()
+        } catch (e: Exception) {
+            Result.retry()
+        }
+    }
+
+    companion object {
+        private const val WORK_NAME = "DailyMoneyTrackerReminderWork"
+
+        fun scheduleWork(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val dailyRequest = PeriodicWorkRequestBuilder<DailyReminderWorker>(24, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                dailyRequest
+            )
+        }
+    }
+}
+package com.rajon.moneytracker.worker
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import com.rajon.moneytracker.MainActivity
+import com.rajon.moneytracker.R
+
+object NotificationHelper {
+    private const val CHANNEL_REMINDERS_ID = "reminders_channel"
+    private const val CHANNEL_BUDGET_ID = "budget_channel"
+
+    fun createNotificationChannels(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nameReminders = context.getString(R.string.notif_channel_reminders_name)
+            val descReminders = context.getString(R.string.notif_channel_reminders_desc)
+            val channelReminders = NotificationChannel(CHANNEL_REMINDERS_ID, nameReminders, NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = descReminders
+            }
+
+            val nameBudget = context.getString(R.string.notif_channel_budget_name)
+            val descBudget = context.getString(R.string.notif_channel_budget_desc)
+            val channelBudget = NotificationChannel(CHANNEL_BUDGET_ID, nameBudget, NotificationManager.IMPORTANCE_HIGH).apply {
+                description = descBudget
+            }
+
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channelReminders)
+            notificationManager.createNotificationChannel(channelBudget)
+        }
+    }
+
+    fun showReminderNotification(context: Context, title: String, message: String, notificationId: Int) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_REMINDERS_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(notificationId, notification)
+    }
+
+    fun showBudgetAlertNotification(context: Context, title: String, message: String, notificationId: Int) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_BUDGET_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(notificationId, notification)
+    }
+}

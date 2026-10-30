@@ -9,6 +9,11 @@ import com.rajon.moneytracker.data.model.TransactionType
 
 data class BalanceBreakdown(
     val openingBankBalance: Double,
+    val openingCashBalance: Double,
+    val setupSalary: Double,
+    val setupExtraIncome: Double,
+    val transactionIncomeBank: Double,
+    val transactionIncomeCash: Double,
     val totalIncome: Double,
     val totalLoansTaken: Double,
     val totalRepaymentsReceived: Double,
@@ -20,37 +25,39 @@ data class BalanceBreakdown(
     val totalLoansGivenFromBank: Double,
     val totalSavingsFromBank: Double,
     val bankBalanceLeft: Double,
-
     val totalCashExpenses: Double,
     val totalCashDebtPayments: Double,
     val cashInHand: Double,
-
-    val totalSpent: Double
+    val totalSpent: Double,
+    val isCarriedOverFromPrevMonth: Boolean = false
 )
 
 object BalanceCalculator {
-    /**
-     * Calculates exact bank balance left and cash in hand for a given month.
-     * Logic strictly adheres to project contract:
-     * Bank balance = opening balance + income + loans taken + repayments received
-     *                - withdrawals - bank/card/wallet expenses - debt payments from bank
-     *                - loans given from bank - savings transfers taken from bank.
-     * Cash in hand = withdrawals - cash expenses - cash debt payments.
-     */
     fun calculate(
         monthSetup: MonthSetup?,
         transactions: List<Transaction>,
         savingsDeposits: List<SavingsDeposit>,
-        debtPayments: List<DebtPaymentRecord>
+        debtPayments: List<DebtPaymentRecord>,
+        carriedOverBankBalance: Double = 0.0,
+        carriedOverCashBalance: Double = 0.0,
+        carriedOverSalary: Double = 0.0,
+        isCarriedOver: Boolean = false
     ): BalanceBreakdown {
-        val opening = monthSetup?.openingBankBalance ?: 0.0
-        val salary = monthSetup?.salary ?: 0.0
+        val openingBank = if (monthSetup != null) monthSetup.openingBankBalance else carriedOverBankBalance
+        val openingCash = if (monthSetup != null) monthSetup.openingBalance else carriedOverCashBalance
+        val salary = if (monthSetup != null && (monthSetup.salary > 0.0 || transactions.any { it.type == TransactionType.INCOME.name })) {
+            monthSetup.salary
+        } else if (monthSetup != null) {
+            monthSetup.salary
+        } else {
+            carriedOverSalary
+        }
         val extraInc = monthSetup?.extraIncome ?: 0.0
-        val totalIncome = salary + extraInc
 
-        // Filter transactions for this month or general
         var loansTaken = 0.0
         var repaymentsReceived = 0.0
+        var txIncomeBank = 0.0
+        var txIncomeCash = 0.0
         var withdrawals = 0.0
         var bankExpenses = 0.0
         var cardExpenses = 0.0
@@ -61,63 +68,71 @@ object BalanceCalculator {
         for (tx in transactions) {
             when (tx.type) {
                 TransactionType.INCOME.name -> {
-                    // Extra income or loan received via transaction
                     if (tx.note.contains("Loan", ignoreCase = true)) {
                         loansTaken += tx.amount
+                    } else if (tx.note.contains("Repay", ignoreCase = true)) {
+                        repaymentsReceived += tx.amount
+                    } else {
+                        if (tx.paymentSource == PaymentSource.CASH.name) {
+                            txIncomeCash += tx.amount
+                        } else {
+                            txIncomeBank += tx.amount
+                        }
                     }
                 }
                 TransactionType.WITHDRAWAL.name -> {
                     withdrawals += tx.amount
                 }
                 TransactionType.EXPENSE.name -> {
-                    val isBank = tx.paymentSource == PaymentSource.BANK.name
-                    val isCard = tx.paymentSource == PaymentSource.CARD.name
-                    val isWallet = tx.paymentSource == PaymentSource.BKASH.name || tx.paymentSource == PaymentSource.NAGAD.name
-                    val isCash = tx.paymentSource == PaymentSource.CASH.name
+                    when (tx.paymentSource) {
+                        PaymentSource.BANK.name -> bankExpenses += tx.amount
+                        PaymentSource.CARD.name -> cardExpenses += tx.amount
+                        PaymentSource.BKASH.name, PaymentSource.NAGAD.name -> walletExpenses += tx.amount
+                        PaymentSource.CASH.name -> cashExpenses += tx.amount
+                        else -> cashExpenses += tx.amount
+                    }
 
-                    if (isBank) bankExpenses += tx.amount
-                    else if (isCard) cardExpenses += tx.amount
-                    else if (isWallet) walletExpenses += tx.amount
-                    else if (isCash) cashExpenses += tx.amount
-
-                    if (tx.note.contains("Lend", ignoreCase = true) && isBank) {
+                    if (tx.note.contains("Lend", ignoreCase = true) && tx.paymentSource == PaymentSource.BANK.name) {
                         loansGivenFromBank += tx.amount
                     }
                 }
             }
         }
 
-        // Debt payments from bank vs cash
         var debtPaymentsFromBank = 0.0
         var cashDebtPayments = 0.0
         for (dp in debtPayments) {
-            if (dp.paymentSource == PaymentSource.BANK.name || dp.paymentSource == PaymentSource.CARD.name || dp.paymentSource == PaymentSource.BKASH.name || dp.paymentSource == PaymentSource.NAGAD.name) {
-                debtPaymentsFromBank += dp.amount
-            } else {
+            if (dp.paymentSource == PaymentSource.CASH.name) {
                 cashDebtPayments += dp.amount
+            } else {
+                debtPaymentsFromBank += dp.amount
             }
         }
 
-        // Savings from bank
         var savingsFromBank = 0.0
         for (dep in savingsDeposits) {
             if (dep.takeFromBank && !dep.isWithdrawal) {
                 savingsFromBank += dep.amount
             } else if (dep.takeFromBank && dep.isWithdrawal) {
-                // Withdrawal from savings back to bank
-                withdrawals -= dep.amount // effectively adds back to bank or reduces transfer
+                savingsFromBank -= dep.amount
             }
         }
 
+        val totalIncome = salary + extraInc + txIncomeBank + txIncomeCash
         val totalSpent = bankExpenses + cardExpenses + walletExpenses + cashExpenses
         val totalBankOutflow = withdrawals + bankExpenses + cardExpenses + walletExpenses + debtPaymentsFromBank + loansGivenFromBank + savingsFromBank
-        val totalBankInflow = opening + totalIncome + loansTaken + repaymentsReceived
+        val totalBankInflow = openingBank + salary + extraInc + txIncomeBank + loansTaken + repaymentsReceived
 
         val bankBalanceLeft = totalBankInflow - totalBankOutflow
-        val cashInHand = withdrawals - cashExpenses - cashDebtPayments
+        val cashInHand = openingCash + withdrawals + txIncomeCash - cashExpenses - cashDebtPayments
 
         return BalanceBreakdown(
-            openingBankBalance = opening,
+            openingBankBalance = openingBank,
+            openingCashBalance = openingCash,
+            setupSalary = salary,
+            setupExtraIncome = extraInc,
+            transactionIncomeBank = txIncomeBank,
+            transactionIncomeCash = txIncomeCash,
             totalIncome = totalIncome,
             totalLoansTaken = loansTaken,
             totalRepaymentsReceived = repaymentsReceived,
@@ -132,7 +147,8 @@ object BalanceCalculator {
             totalCashExpenses = cashExpenses,
             totalCashDebtPayments = cashDebtPayments,
             cashInHand = cashInHand,
-            totalSpent = totalSpent
+            totalSpent = totalSpent,
+            isCarriedOverFromPrevMonth = isCarriedOver
         )
     }
 }
