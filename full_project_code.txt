@@ -96,6 +96,14 @@
 
 
 
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/cards/CreditCardsScreen.kt ---
+
+
+
+--- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/cards/CreditCardsViewModel.kt ---
+
+
+
 --- FILE: app/src/main/java/com/rajon/moneytracker/ui/screens/debts/DebtsScreen.kt ---
 
 
@@ -257,6 +265,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.rajon.moneytracker.MoneyTrackerApp
 import com.rajon.moneytracker.ui.screens.auth.AuthViewModel
 import com.rajon.moneytracker.ui.screens.budget.BudgetViewModel
+import com.rajon.moneytracker.ui.screens.cards.CreditCardsViewModel
 import com.rajon.moneytracker.ui.screens.debts.DebtsViewModel
 import com.rajon.moneytracker.ui.screens.home.HomeViewModel
 import com.rajon.moneytracker.ui.screens.history.HistoryViewModel
@@ -278,6 +287,8 @@ object AppViewModelProvider {
                     HomeViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(TransactionsViewModel::class.java) ->
                     TransactionsViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(CreditCardsViewModel::class.java) ->
+                    CreditCardsViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(BudgetViewModel::class.java) ->
                     BudgetViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(SavingsViewModel::class.java) ->
@@ -317,7 +328,7 @@ package com.rajon.moneytracker.data.model
 import java.io.Serializable
 
 enum class TransactionType {
-    EXPENSE, INCOME, WITHDRAWAL
+    EXPENSE, INCOME, WITHDRAWAL, CARD_LOAN, CARD_PAYMENT
 }
 
 enum class PaymentSource(val displayName: String) {
@@ -392,6 +403,25 @@ data class Transaction(
     val isOneOffBill: Boolean = false,
     val linkedRecurringId: String? = null,
     val linkedDebtId: String? = null,
+    val linkedCardId: String? = null,
+    val linkedCardName: String = "",
+    val isCardBillPayment: Boolean = false,
+    val emiMonths: Int = 1,
+    val cardLoanPrincipal: Double = 0.0,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class CreditCard(
+    val id: String = "",
+    val cardName: String = "",
+    val bankName: String = "",
+    val lastFourDigits: String = "",
+    val creditLimit: Double = 0.0,
+    val previousDebt: Double = 0.0,
+    val statementDay: Int = 15,
+    val paymentDueDay: Int = 5,
+    val minimumDuePercent: Double = 5.0,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L
 ) : Serializable
@@ -524,17 +554,16 @@ data class FullBackupPayload(
     val goalDeposits: List<SavingsDeposit>,
     val debts: List<DebtItem>,
     val debtPayments: List<DebtPaymentRecord>,
-    val summaries: List<MonthlySummary>
+    val summaries: List<MonthlySummary>,
+    val creditCards: List<CreditCard> = emptyList()
 ) : Serializablepackage com.rajon.moneytracker.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.rajon.moneytracker.data.model.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 
 class FirebaseAuthRepository : AuthRepository {
@@ -654,10 +683,13 @@ class FirestoreFinanceRepository : FinanceRepository {
         val snapshot = ref.get().await()
         if (snapshot.isEmpty) {
             val defaults = listOf(
-                ExpenseCategory(id = "food", name = "Food & Dining", colorHex = 0xFFEF5350L, iconName = "restaurant", isDefault = true),
-                ExpenseCategory(id = "transport", name = "Transportation", colorHex = 0xFF42A5F5L, iconName = "directions_car", isDefault = true),
-                ExpenseCategory(id = "utilities", name = "Utilities & Bills", colorHex = 0xFFFFCA28L, iconName = "bolt", isDefault = true),
-                ExpenseCategory(id = "shopping", name = "Shopping", colorHex = 0xFFAB47BCL, iconName = "shopping_bag", isDefault = true)
+                ExpenseCategory(id = "food", name = "Food & Dining", colorHex = 0xFFEF4444L, iconName = "restaurant", isDefault = true),
+                ExpenseCategory(id = "groceries", name = "Groceries & Bazar", colorHex = 0xFF10B981L, iconName = "shopping_cart", isDefault = true),
+                ExpenseCategory(id = "transport", name = "Transport & Fuel", colorHex = 0xFF3B82F6L, iconName = "directions_car", isDefault = true),
+                ExpenseCategory(id = "utilities", name = "Utilities & Bills", colorHex = 0xFFF59E0BL, iconName = "bolt", isDefault = true),
+                ExpenseCategory(id = "shopping", name = "Shopping & Lifestyle", colorHex = 0xFF8B5CF6L, iconName = "shopping_bag", isDefault = true),
+                ExpenseCategory(id = "health", name = "Health & Pharmacy", colorHex = 0xFFEC4899L, iconName = "medical_services", isDefault = true),
+                ExpenseCategory(id = "salary", name = "Salary & Income", colorHex = 0xFF059669L, iconName = "payments", isDefault = true)
             )
             val batch = firestore.batch()
             for (cat in defaults) {
@@ -704,6 +736,30 @@ class FirestoreFinanceRepository : FinanceRepository {
 
     override suspend fun deleteTransaction(txId: String) {
         userDoc.collection("transactions").document(txId).delete().await()
+    }
+
+    override fun observeCreditCards(): Flow<List<CreditCard>> = callbackFlow {
+        val listener = userDoc.collection("credit_cards")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(CreditCard::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveCreditCard(card: CreditCard) {
+        val id = if (card.id.isBlank()) userDoc.collection("credit_cards").document().id else card.id
+        val now = System.currentTimeMillis()
+        val toSave = card.copy(
+            id = id,
+            createdAt = if (card.createdAt == 0L) now else card.createdAt,
+            updatedAt = now
+        )
+        userDoc.collection("credit_cards").document(id).set(toSave).await()
+    }
+
+    override suspend fun deleteCreditCard(cardId: String) {
+        userDoc.collection("credit_cards").document(cardId).delete().await()
     }
 
     override fun observeRecurring(): Flow<List<RecurringPayment>> = callbackFlow {
@@ -804,7 +860,7 @@ class FirestoreFinanceRepository : FinanceRepository {
     override suspend fun addGoalDeposit(goal: SavingsGoal, deposit: SavingsDeposit) {
         val depositId = if (deposit.id.isBlank()) userDoc.collection("deposits").document().id else deposit.id
         val savedDeposit = deposit.copy(id = depositId, goalId = goal.id, updatedAt = System.currentTimeMillis())
-        
+
         val newCurrent = if (deposit.isWithdrawal) goal.currentAmount - deposit.amount else goal.currentAmount + deposit.amount
         val updatedGoal = goal.copy(currentAmount = newCurrent, updatedAt = System.currentTimeMillis())
 
@@ -865,7 +921,7 @@ class FirestoreFinanceRepository : FinanceRepository {
     override suspend fun addDebtPayment(debt: DebtItem, payment: DebtPaymentRecord, createExpenseTx: Boolean) {
         val paymentId = if (payment.id.isBlank()) userDoc.collection("debt_payments").document().id else payment.id
         val savedPayment = payment.copy(id = paymentId, debtId = debt.id, updatedAt = System.currentTimeMillis())
-        
+
         val newPaid = debt.paidAmount + payment.amount
         val newStatus = if (newPaid >= debt.totalAmount) DebtStatus.CLOSED.name else DebtStatus.ACTIVE.name
         val updatedDebt = debt.copy(paidAmount = newPaid, status = newStatus, updatedAt = System.currentTimeMillis())
@@ -898,7 +954,6 @@ class FirestoreFinanceRepository : FinanceRepository {
     }
 
     override suspend fun getSnapshotForWorker(): WorkerDataSnapshot {
-        // Implementation for background worker snapshots if needed
         return WorkerDataSnapshot(UserSettings(), emptyList(), emptyList())
     }
 
@@ -915,7 +970,8 @@ class FirestoreFinanceRepository : FinanceRepository {
             goalDeposits = emptyList(),
             debts = emptyList(),
             debtPayments = emptyList(),
-            summaries = emptyList()
+            summaries = emptyList(),
+            creditCards = emptyList()
         )
     }
 
@@ -956,6 +1012,10 @@ interface FinanceRepository {
     suspend fun saveTransaction(tx: Transaction)
     suspend fun deleteTransaction(txId: String)
 
+    fun observeCreditCards(): Flow<List<CreditCard>>
+    suspend fun saveCreditCard(card: CreditCard)
+    suspend fun deleteCreditCard(cardId: String)
+
     fun observeRecurring(): Flow<List<RecurringPayment>>
     suspend fun saveRecurring(item: RecurringPayment)
     suspend fun deleteRecurring(id: String)
@@ -988,8 +1048,7 @@ interface FinanceRepository {
     suspend fun getSnapshotForWorker(): WorkerDataSnapshot
     suspend fun exportFullBackupData(): FullBackupPayload
     suspend fun restoreFullBackupData(payload: FullBackupPayload)
-}
-package com.rajon.moneytracker.domain
+}package com.rajon.moneytracker.domain
 
 import com.rajon.moneytracker.data.model.DebtPaymentRecord
 import com.rajon.moneytracker.data.model.MonthSetup
@@ -1011,104 +1070,136 @@ data class BalanceBreakdown(
     val totalLoansGivenFromBank: Double,
     val totalSavingsFromBank: Double,
     val bankBalanceLeft: Double,
-
     val totalCashExpenses: Double,
     val totalCashDebtPayments: Double,
     val cashInHand: Double,
-
-    val totalSpent: Double
+    val totalSpent: Double,
+    val openingCashBalance: Double = 0.0,
+    val setupSalary: Double = 0.0,
+    val setupExtraIncome: Double = 0.0,
+    val transactionIncomeBank: Double = 0.0,
+    val transactionIncomeCash: Double = 0.0,
+    val isCarriedOverFromPrevMonth: Boolean = false
 )
 
 object BalanceCalculator {
-    /**
-     * Calculates exact bank balance left and cash in hand for a given month.
-     * Logic strictly adheres to project contract:
-     * Bank balance = opening balance + income + loans taken + repayments received
-     *                - withdrawals - bank/card/wallet expenses - debt payments from bank
-     *                - loans given from bank - savings transfers taken from bank.
-     * Cash in hand = withdrawals - cash expenses - cash debt payments.
-     */
     fun calculate(
         monthSetup: MonthSetup?,
         transactions: List<Transaction>,
         savingsDeposits: List<SavingsDeposit>,
-        debtPayments: List<DebtPaymentRecord>
+        debtPayments: List<DebtPaymentRecord>,
+        carriedOverBankBalance: Double = 0.0,
+        carriedOverCashBalance: Double = 0.0,
+        carriedOverSalary: Double = 0.0,
+        isCarriedOver: Boolean = false
     ): BalanceBreakdown {
-        val opening = monthSetup?.openingBankBalance ?: 0.0
-        val salary = monthSetup?.salary ?: 0.0
+        val openingBank = monthSetup?.openingBankBalance ?: carriedOverBankBalance
+        val openingCash = monthSetup?.openingBalance ?: carriedOverCashBalance
+        val salary = monthSetup?.salary ?: carriedOverSalary
         val extraInc = monthSetup?.extraIncome ?: 0.0
-        val totalIncome = salary + extraInc
 
-        // Filter transactions for this month or general
         var loansTaken = 0.0
+        var cashLoansTaken = 0.0
         var repaymentsReceived = 0.0
+        var txIncomeBank = 0.0
+        var txIncomeCash = 0.0
         var withdrawals = 0.0
         var bankExpenses = 0.0
         var cardExpenses = 0.0
         var walletExpenses = 0.0
         var cashExpenses = 0.0
         var loansGivenFromBank = 0.0
+        var cardBillPaymentsFromBank = 0.0
+        var cardBillPaymentsFromCash = 0.0
 
         for (tx in transactions) {
             when (tx.type) {
                 TransactionType.INCOME.name -> {
-                    // Extra income or loan received via transaction
                     if (tx.note.contains("Loan", ignoreCase = true)) {
                         loansTaken += tx.amount
+                    } else if (tx.note.contains("Repay", ignoreCase = true)) {
+                        repaymentsReceived += tx.amount
+                    } else {
+                        if (tx.paymentSource == PaymentSource.CASH.name) {
+                            txIncomeCash += tx.amount
+                        } else {
+                            txIncomeBank += tx.amount
+                        }
+                    }
+                }
+                TransactionType.CARD_LOAN.name -> {
+                    val principal = if (tx.cardLoanPrincipal > 0.0) tx.cardLoanPrincipal else tx.amount
+                    if (tx.paymentSource == PaymentSource.BANK.name) {
+                        loansTaken += principal
+                    } else if (tx.paymentSource == PaymentSource.CASH.name) {
+                        cashLoansTaken += principal
+                    }
+                }
+                TransactionType.CARD_PAYMENT.name -> {
+                    if (tx.paymentSource == PaymentSource.CASH.name) {
+                        cardBillPaymentsFromCash += tx.amount
+                    } else {
+                        cardBillPaymentsFromBank += tx.amount
                     }
                 }
                 TransactionType.WITHDRAWAL.name -> {
                     withdrawals += tx.amount
                 }
                 TransactionType.EXPENSE.name -> {
-                    val isBank = tx.paymentSource == PaymentSource.BANK.name
-                    val isCard = tx.paymentSource == PaymentSource.CARD.name
-                    val isWallet = tx.paymentSource == PaymentSource.BKASH.name || tx.paymentSource == PaymentSource.NAGAD.name
-                    val isCash = tx.paymentSource == PaymentSource.CASH.name
+                    if (tx.isCardBillPayment) {
+                        if (tx.paymentSource == PaymentSource.CASH.name) {
+                            cardBillPaymentsFromCash += tx.amount
+                        } else {
+                            cardBillPaymentsFromBank += tx.amount
+                        }
+                    } else {
+                        when (tx.paymentSource) {
+                            PaymentSource.BANK.name -> bankExpenses += tx.amount
+                            PaymentSource.CARD.name -> cardExpenses += tx.amount
+                            PaymentSource.BKASH.name, PaymentSource.NAGAD.name -> walletExpenses += tx.amount
+                            PaymentSource.CASH.name -> cashExpenses += tx.amount
+                            else -> cashExpenses += tx.amount
+                        }
 
-                    if (isBank) bankExpenses += tx.amount
-                    else if (isCard) cardExpenses += tx.amount
-                    else if (isWallet) walletExpenses += tx.amount
-                    else if (isCash) cashExpenses += tx.amount
-
-                    if (tx.note.contains("Lend", ignoreCase = true) && isBank) {
-                        loansGivenFromBank += tx.amount
+                        if (tx.note.contains("Lend", ignoreCase = true) && tx.paymentSource == PaymentSource.BANK.name) {
+                            loansGivenFromBank += tx.amount
+                        }
                     }
                 }
             }
         }
 
-        // Debt payments from bank vs cash
-        var debtPaymentsFromBank = 0.0
-        var cashDebtPayments = 0.0
+        var debtPaymentsFromBank = cardBillPaymentsFromBank
+        var cashDebtPayments = cardBillPaymentsFromCash
         for (dp in debtPayments) {
-            if (dp.paymentSource == PaymentSource.BANK.name || dp.paymentSource == PaymentSource.CARD.name || dp.paymentSource == PaymentSource.BKASH.name || dp.paymentSource == PaymentSource.NAGAD.name) {
-                debtPaymentsFromBank += dp.amount
-            } else {
+            if (dp.paymentSource == PaymentSource.CASH.name) {
                 cashDebtPayments += dp.amount
+            } else {
+                debtPaymentsFromBank += dp.amount
             }
         }
 
-        // Savings from bank
         var savingsFromBank = 0.0
         for (dep in savingsDeposits) {
             if (dep.takeFromBank && !dep.isWithdrawal) {
                 savingsFromBank += dep.amount
             } else if (dep.takeFromBank && dep.isWithdrawal) {
-                // Withdrawal from savings back to bank
-                withdrawals -= dep.amount // effectively adds back to bank or reduces transfer
+                withdrawals -= dep.amount
             }
         }
 
+        val totalIncome = salary + extraInc + txIncomeBank + txIncomeCash
+        // Total Spent includes Card Purchases, Bank, Wallet, and Cash expenses
         val totalSpent = bankExpenses + cardExpenses + walletExpenses + cashExpenses
-        val totalBankOutflow = withdrawals + bankExpenses + cardExpenses + walletExpenses + debtPaymentsFromBank + loansGivenFromBank + savingsFromBank
-        val totalBankInflow = opening + totalIncome + loansTaken + repaymentsReceived
+        // Bank Outflow only deducts actual Bank/Wallet expenses and Credit Card Bill Payments (NOT unpaid Card swipes!)
+        val totalBankOutflow = withdrawals + bankExpenses + walletExpenses + debtPaymentsFromBank + loansGivenFromBank + savingsFromBank
+        val totalBankInflow = openingBank + salary + extraInc + txIncomeBank + loansTaken + repaymentsReceived
 
         val bankBalanceLeft = totalBankInflow - totalBankOutflow
-        val cashInHand = withdrawals - cashExpenses - cashDebtPayments
+        val cashInHand = openingCash + withdrawals + txIncomeCash + cashLoansTaken - cashExpenses - cashDebtPayments
 
         return BalanceBreakdown(
-            openingBankBalance = opening,
+            openingBankBalance = openingBank,
             totalIncome = totalIncome,
             totalLoansTaken = loansTaken,
             totalRepaymentsReceived = repaymentsReceived,
@@ -1123,11 +1214,16 @@ object BalanceCalculator {
             totalCashExpenses = cashExpenses,
             totalCashDebtPayments = cashDebtPayments,
             cashInHand = cashInHand,
-            totalSpent = totalSpent
+            totalSpent = totalSpent,
+            openingCashBalance = openingCash,
+            setupSalary = salary,
+            setupExtraIncome = extraInc,
+            transactionIncomeBank = txIncomeBank,
+            transactionIncomeCash = txIncomeCash,
+            isCarriedOverFromPrevMonth = isCarriedOver
         )
     }
-}
-package com.rajon.moneytracker.domain
+}package com.rajon.moneytracker.domain
 
 import com.rajon.moneytracker.data.model.CategoryBudget
 import com.rajon.moneytracker.data.model.Transaction
@@ -1641,19 +1737,23 @@ package com.rajon.moneytracker.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.rajon.moneytracker.ui.theme.TealDark
-import com.rajon.moneytracker.ui.theme.TealPrimary
+import com.rajon.moneytracker.ui.theme.*
+import com.rajon.moneytracker.util.Formatters
 
 @Composable
 fun GradientCard(
@@ -1662,20 +1762,22 @@ fun GradientCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(TealDark, TealPrimary)
+                        colors = listOf(HeroGradientStart, HeroGradientMid, HeroGradientEnd)
                     )
                 )
-                .padding(20.dp)
+                .padding(22.dp)
         ) {
-            Column(content = content)
+            CompositionLocalProvider(LocalContentColor provides Color.White) {
+                Column(content = content)
+            }
         }
     }
 }
@@ -1687,28 +1789,39 @@ fun MonthSelectorBar(
     onNextMonth: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
     ) {
-        IconButton(onClick = onPrevMonth) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowLeft,
-                contentDescription = "Previous Month"
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPrevMonth) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowLeft,
+                    contentDescription = "Previous Month",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Text(
+                text = Formatters.formatMonthTitle(currentYearMonth),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
-        }
-        Text(
-            text = com.rajon.moneytracker.util.Formatters.formatMonthTitle(currentYearMonth),
-            style = MaterialTheme.typography.titleLarge
-        )
-        IconButton(onClick = onNextMonth) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
-                contentDescription = "Next Month"
-            )
+            IconButton(onClick = onNextMonth) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Next Month",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }
@@ -1720,11 +1833,11 @@ fun BudgetProgressBar(
     limit: Double,
     currencySymbol: String = "৳"
 ) {
-    val pct = if (limit > 0.0) ((spent / limit)).toFloat().coerceIn(0f, 1.5f) else 0f
+    val pct = if (limit > 0.0) (spent / limit).toFloat().coerceIn(0f, 1.5f) else 0f
     val color = when {
-        pct >= 1f -> MaterialTheme.colorScheme.error
-        pct >= 0.7f -> com.rajon.moneytracker.ui.theme.OrangeWarning
-        else -> com.rajon.moneytracker.ui.theme.GreenSuccess
+        pct >= 1f -> RedError
+        pct >= 0.75f -> OrangeWarning
+        else -> GreenSuccess
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
@@ -1732,16 +1845,28 @@ fun BudgetProgressBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = title, style = MaterialTheme.typography.bodyMedium)
+            if (title.isNotBlank()) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
             Text(
-                text = "${com.rajon.moneytracker.util.Formatters.formatCurrency(spent, currencySymbol)} / ${com.rajon.moneytracker.util.Formatters.formatCurrency(limit, currencySymbol)}",
-                style = MaterialTheme.typography.bodyMedium
+                text = "${Formatters.formatCurrency(spent, currencySymbol)} / ${Formatters.formatCurrency(limit, currencySymbol)}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         LinearProgressIndicator(
             progress = { pct.coerceAtMost(1f) },
-            modifier = Modifier.fillMaxWidth().height(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(CircleShape),
             color = color,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
@@ -1750,12 +1875,11 @@ fun BudgetProgressBar(
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -1771,6 +1895,8 @@ import com.rajon.moneytracker.ui.screens.auth.AuthScreen
 import com.rajon.moneytracker.ui.screens.auth.AuthViewModel
 import com.rajon.moneytracker.ui.screens.budget.BudgetScreen
 import com.rajon.moneytracker.ui.screens.budget.BudgetViewModel
+import com.rajon.moneytracker.ui.screens.cards.CreditCardsScreen
+import com.rajon.moneytracker.ui.screens.cards.CreditCardsViewModel
 import com.rajon.moneytracker.ui.screens.debts.DebtsScreen
 import com.rajon.moneytracker.ui.screens.debts.DebtsViewModel
 import com.rajon.moneytracker.ui.screens.history.HistoryScreen
@@ -1788,8 +1914,8 @@ import com.rajon.moneytracker.ui.screens.transactions.TransactionsViewModel
 sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
     object Home : BottomNavItem(NavRoutes.HOME, "Home", Icons.Default.Home)
     object Transactions : BottomNavItem(NavRoutes.TRANSACTIONS, "Transactions", Icons.Default.ReceiptLong)
+    object Cards : BottomNavItem(NavRoutes.CARDS, "Credit Card", Icons.Default.CreditCard)
     object Budget : BottomNavItem(NavRoutes.BUDGET, "Budget", Icons.Default.Assessment)
-    object Savings : BottomNavItem(NavRoutes.SAVINGS, "Savings", Icons.Default.Savings)
     object More : BottomNavItem(NavRoutes.MORE, "More", Icons.Default.MoreHoriz)
 }
 
@@ -1804,8 +1930,8 @@ fun AppNavHost(appContainer: AppContainer) {
     val bottomNavItems = listOf(
         BottomNavItem.Home,
         BottomNavItem.Transactions,
+        BottomNavItem.Cards,
         BottomNavItem.Budget,
-        BottomNavItem.Savings,
         BottomNavItem.More
     )
 
@@ -1865,6 +1991,11 @@ fun AppNavHost(appContainer: AppContainer) {
                     viewModel = TransactionsViewModel(appContainer.financeRepository)
                 )
             }
+            composable(NavRoutes.CARDS) {
+                CreditCardsScreen(
+                    viewModel = CreditCardsViewModel(appContainer.financeRepository)
+                )
+            }
             composable(NavRoutes.BUDGET) {
                 BudgetScreen(
                     viewModel = BudgetViewModel(appContainer.financeRepository)
@@ -1877,6 +2008,7 @@ fun AppNavHost(appContainer: AppContainer) {
             }
             composable(NavRoutes.MORE) {
                 MoreScreen(
+                    onNavigateToSavings = { navController.navigate(NavRoutes.SAVINGS) },
                     onNavigateToDebts = { navController.navigate(NavRoutes.DEBTS) },
                     onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
                     onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
@@ -1915,14 +2047,14 @@ object NavRoutes {
     const val AUTH = "auth"
     const val HOME = "home"
     const val TRANSACTIONS = "transactions"
+    const val CARDS = "cards"
     const val BUDGET = "budget"
     const val SAVINGS = "savings"
     const val MORE = "more"
     const val DEBTS = "debts"
     const val HISTORY = "history"
     const val SETTINGS = "settings"
-}
-package com.rajon.moneytracker.ui.screens.auth
+}package com.rajon.moneytracker.ui.screens.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -2302,7 +2434,1175 @@ class BudgetViewModel(
         }
     }
 }
-package com.rajon.moneytracker.ui.screens.debts
+package com.rajon.moneytracker.ui.screens.cards
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.*
+import com.rajon.moneytracker.ui.components.GradientCard
+import com.rajon.moneytracker.ui.theme.*
+import com.rajon.moneytracker.util.Formatters
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreditCardsScreen(
+    viewModel: CreditCardsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val summaries by viewModel.cardSummaries.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+
+    var showAddEditCardDialog by remember { mutableStateOf(false) }
+    var editingCard by remember { mutableStateOf<CreditCard?>(null) }
+    var deletingCard by remember { mutableStateOf<CreditCard?>(null) }
+
+    var purchaseCard by remember { mutableStateOf<CreditCard?>(null) }
+    var loanCard by remember { mutableStateOf<CreditCard?>(null) }
+    var paymentCardSummary by remember { mutableStateOf<CardFinancialSummary?>(null) }
+
+    val totalDebtAllCards = summaries.sumOf { it.totalOutstandingDebt }
+    val totalNextDueAllCards = summaries.sumOf { it.estimatedNextPaymentDue }
+    val totalLimitAllCards = summaries.sumOf { it.card.creditLimit }
+
+    Scaffold(
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = {
+                    editingCard = null
+                    showAddEditCardDialog = true
+                },
+                icon = { Icon(Icons.Default.AddCard, contentDescription = "Add Credit Card") },
+                text = { Text("Add Card") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(top = 14.dp, bottom = 96.dp)
+        ) {
+            item {
+                Text(
+                    text = "Credit Cards & Loans",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Overall Credit Debt Summary Banner
+            item {
+                GradientCard {
+                    Text(
+                        text = "Total Credit Card Debt",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = Formatters.formatCurrency(totalDebtAllCards, settings.currencySymbol),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Due Next Cycle", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
+                            Text(
+                                Formatters.formatCurrency(totalNextDueAllCards, settings.currencySymbol),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MintLight
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Available Limit", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
+                            Text(
+                                Formatters.formatCurrency((totalLimitAllCards - totalDebtAllCards).coerceAtLeast(0.0), settings.currencySymbol),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (summaries.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(28.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.CreditCard,
+                                contentDescription = null,
+                                modifier = Modifier.size(56.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "No Credit Cards Added Yet",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Add your credit card (including any previous unpaid balance) to track card purchases, cash loans, next payment dates, and bill adjustments.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { showAddEditCardDialog = true }) {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Add Your First Credit Card")
+                            }
+                        }
+                    }
+                }
+            } else {
+                items(summaries, key = { it.card.id }) { summary ->
+                    CreditCardDetailItem(
+                        summary = summary,
+                        currencySymbol = settings.currencySymbol,
+                        onBuyClick = { purchaseCard = summary.card },
+                        onLoanClick = { loanCard = summary.card },
+                        onPayBillClick = { paymentCardSummary = summary },
+                        onEditCard = {
+                            editingCard = summary.card
+                            showAddEditCardDialog = true
+                        },
+                        onDeleteCard = { deletingCard = summary.card },
+                        onDeleteTx = { txId -> viewModel.deleteCardTransaction(txId) }
+                    )
+                }
+            }
+        }
+    }
+
+    // 1. Add / Edit Credit Card Dialog
+    if (showAddEditCardDialog) {
+        AddEditCreditCardDialog(
+            initial = editingCard,
+            onDismiss = {
+                showAddEditCardDialog = false
+                editingCard = null
+            },
+            onSave = { card ->
+                viewModel.saveCard(card)
+                showAddEditCardDialog = false
+                editingCard = null
+            }
+        )
+    }
+
+    // 2. Delete Credit Card Confirmation
+    if (deletingCard != null) {
+        AlertDialog(
+            onDismissRequest = { deletingCard = null },
+            title = { Text("Delete ${deletingCard?.cardName}?") },
+            text = { Text("This will remove the credit card from your list. Are you sure?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteCard(deletingCard!!.id)
+                        deletingCard = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete Card")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingCard = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // 3. Record Card Purchase Dialog
+    if (purchaseCard != null) {
+        CardPurchaseDialog(
+            card = purchaseCard!!,
+            categories = categories,
+            onDismiss = { purchaseCard = null },
+            onConfirm = { amount, catId, catName, note ->
+                viewModel.recordCardPurchase(purchaseCard!!, amount, catId, catName, note)
+                purchaseCard = null
+            }
+        )
+    }
+
+    // 4. Take Loan from Credit Card Dialog
+    if (loanCard != null) {
+        CardLoanDialog(
+            card = loanCard!!,
+            onDismiss = { loanCard = null },
+            onConfirm = { principal, fee, emiMonths, depositTo, note ->
+                viewModel.recordCardLoan(loanCard!!, principal, fee, emiMonths, depositTo, note)
+                loanCard = null
+            }
+        )
+    }
+
+    // 5. Pay Credit Card Bill Dialog
+    if (paymentCardSummary != null) {
+        PayCardBillDialog(
+            summary = paymentCardSummary!!,
+            currencySymbol = settings.currencySymbol,
+            onDismiss = { paymentCardSummary = null },
+            onConfirm = { amount, source, note ->
+                viewModel.payCardBill(paymentCardSummary!!.card, amount, source, note)
+                paymentCardSummary = null
+            }
+        )
+    }
+}
+
+@Composable
+fun CreditCardDetailItem(
+    summary: CardFinancialSummary,
+    currencySymbol: String,
+    onBuyClick: () -> Unit,
+    onLoanClick: () -> Unit,
+    onPayBillClick: () -> Unit,
+    onEditCard: () -> Unit,
+    onDeleteCard: () -> Unit,
+    onDeleteTx: (String) -> Unit
+) {
+    val card = summary.card
+    var showHistory by remember { mutableStateOf(false) }
+
+    val dueBadgeColor = when {
+        summary.totalOutstandingDebt <= 0.0 -> GreenSuccess
+        summary.daysUntilDue <= 3 -> RedError
+        summary.daysUntilDue <= 7 -> OrangeWarning
+        else -> BlueInfo
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Top Metallic-style Card Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFF1E293B), Color(0xFF0F172A))
+                        )
+                    )
+                    .padding(18.dp)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CreditCard, contentDescription = null, tint = MintLight)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "${card.bankName} • ${card.cardName}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                if (card.lastFourDigits.isNotBlank()) {
+                                    Text(
+                                        text = "•••• ${card.lastFourDigits}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                        }
+                        Row {
+                            IconButton(onClick = onEditCard, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Card", tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = onDeleteCard, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete Card", tint = RedError, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Column {
+                            Text("Current Total Debt", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.75f))
+                            Text(
+                                text = Formatters.formatCurrency(summary.totalOutstandingDebt, currencySymbol),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (summary.totalOutstandingDebt > 0) Color(0xFFFCA5A5) else MintLight
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Available Credit", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.75f))
+                            Text(
+                                text = Formatters.formatCurrency(summary.availableCredit, currencySymbol),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { (summary.utilizationPercent / 100f).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(CircleShape),
+                        color = if (summary.utilizationPercent > 80f) RedError else MintAccent,
+                        trackColor = Color.White.copy(alpha = 0.2f)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Credit Limit: ${Formatters.formatCurrency(card.creditLimit, currencySymbol)} (${summary.utilizationPercent.toInt()}% used)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            // Payment Planner & Due Date Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = dueBadgeColor.copy(alpha = 0.1f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Event, contentDescription = null, tint = dueBadgeColor, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Next Payment Date: ${summary.nextPaymentDateText}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (summary.totalOutstandingDebt <= 0.0) {
+                                    "All clear! No payment needed."
+                                } else {
+                                    "Min Due: ${Formatters.formatCurrency(summary.minimumPaymentDue, currencySymbol)} • (${summary.daysUntilDue} days left)"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Amount to Pay", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = Formatters.formatCurrency(summary.estimatedNextPaymentDue, currencySymbol),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = dueBadgeColor
+                            )
+                        }
+                    }
+                }
+
+                // Debt Breakdown Row (Purchases vs Loans vs Monthly EMI)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Month Purchases", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            Formatters.formatCurrency(summary.currentMonthPurchases, currencySymbol),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Column {
+                        Text("Loans Taken", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            Formatters.formatCurrency(summary.activeLoansTotalRemaining, currencySymbol),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Monthly Loan EMI", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            Formatters.formatCurrency(summary.monthlyLoanEmiTotal, currencySymbol),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // 3 Action Buttons: Buy Stuff, Take Loan, Pay Bill
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onBuyClick,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.ShoppingBag, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Buy Stuff", style = MaterialTheme.typography.labelMedium)
+                    }
+                    OutlinedButton(
+                        onClick = onLoanClick,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.RequestQuote, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Take Loan", style = MaterialTheme.typography.labelMedium)
+                    }
+                    Button(
+                        onClick = onPayBillClick,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                        contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Pay Bill", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+
+                // Toggleable Card Transaction History
+                if (summary.cardTransactions.isNotEmpty() || card.previousDebt > 0.0) {
+                    TextButton(
+                        onClick = { showHistory = !showHistory },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (showHistory) "Hide Card History ▲" else "View Card Activity & Loans (${summary.cardTransactions.size}) ▼")
+                    }
+
+                    AnimatedVisibility(visible = showHistory) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (card.previousDebt > 0.0) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Initial / Previous Debt Carryover", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        Formatters.formatCurrency(card.previousDebt, currencySymbol),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = OrangeWarning
+                                    )
+                                }
+                            }
+                            summary.cardTransactions.take(15).forEach { tx ->
+                                val isPayment = tx.isCardBillPayment || tx.type == TransactionType.CARD_PAYMENT.name
+                                val isLoan = tx.type == TransactionType.CARD_LOAN.name
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = tx.note.ifBlank { tx.categoryName },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        val subText = when {
+                                            isPayment -> "Bill Paid via ${tx.paymentSource} • ${Formatters.formatDate(tx.dateMillis)}"
+                                            isLoan -> "Card Loan (${if (tx.emiMonths > 1) "${tx.emiMonths}m EMI" else "One-time"}) • ${Formatters.formatDate(tx.dateMillis)}"
+                                            else -> "${tx.categoryName} • ${Formatters.formatDate(tx.dateMillis)}"
+                                        }
+                                        Text(subText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "${if (isPayment) "-" else "+"}${Formatters.formatCurrency(tx.amount, currencySymbol)}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isPayment) GreenSuccess else RedError
+                                        )
+                                        IconButton(onClick = { onDeleteTx(tx.id) }, modifier = Modifier.size(28.dp)) {
+                                            Icon(Icons.Default.Close, contentDescription = "Delete entry", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddEditCreditCardDialog(
+    initial: CreditCard?,
+    onDismiss: () -> Unit,
+    onSave: (CreditCard) -> Unit
+) {
+    var bankName by remember { mutableStateOf(initial?.bankName ?: "") }
+    var cardName by remember { mutableStateOf(initial?.cardName ?: "") }
+    var lastFour by remember { mutableStateOf(initial?.lastFourDigits ?: "") }
+    var creditLimit by remember { mutableStateOf(initial?.creditLimit?.takeIf { it > 0 }?.toString() ?: "") }
+    var prevDebt by remember { mutableStateOf(initial?.previousDebt?.takeIf { it > 0 }?.toString() ?: "") }
+    var statementDay by remember { mutableStateOf(initial?.statementDay?.toString() ?: "15") }
+    var paymentDueDay by remember { mutableStateOf(initial?.paymentDueDay?.toString() ?: "5") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initial == null) "Add Credit Card" else "Edit Credit Card") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = bankName,
+                    onValueChange = { bankName = it },
+                    label = { Text("Bank Name (e.g., City Bank, EBL, BRAC)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = cardName,
+                    onValueChange = { cardName = it },
+                    label = { Text("Card Name (e.g., Amex, Visa Signature)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = lastFour,
+                    onValueChange = { if (it.length <= 4) lastFour = it },
+                    label = { Text("Last 4 Digits (Optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = creditLimit,
+                    onValueChange = { creditLimit = it },
+                    label = { Text("Total Credit Limit (৳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = prevDebt,
+                    onValueChange = { prevDebt = it },
+                    label = { Text("Existing / Previous Unpaid Debt (৳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = statementDay,
+                        onValueChange = { statementDay = it },
+                        label = { Text("Statement Day (1-31)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = paymentDueDay,
+                        onValueChange = { paymentDueDay = it },
+                        label = { Text("Payment Due Day (1-31)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (cardName.isNotBlank() || bankName.isNotBlank()) {
+                    onSave(
+                        (initial ?: CreditCard()).copy(
+                            bankName = bankName.trim().ifBlank { "Bank" },
+                            cardName = cardName.trim().ifBlank { "Credit Card" },
+                            lastFourDigits = lastFour.trim(),
+                            creditLimit = creditLimit.toDoubleOrNull() ?: 0.0,
+                            previousDebt = prevDebt.toDoubleOrNull() ?: 0.0,
+                            statementDay = (statementDay.toIntOrNull() ?: 15).coerceIn(1, 31),
+                            paymentDueDay = (paymentDueDay.toIntOrNull() ?: 5).coerceIn(1, 31)
+                        )
+                    )
+                }
+            }) {
+                Text("Save Card")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun CardPurchaseDialog(
+    card: CreditCard,
+    categories: List<ExpenseCategory>,
+    onDismiss: () -> Unit,
+    onConfirm: (Double, String, String, String) -> Unit
+) {
+    var amount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var selectedCatId by remember { mutableStateOf(categories.firstOrNull()?.id ?: "shopping") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Buy with ${card.cardName}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Adds to your Credit Card debt and monthly spending without deducting from your Bank Balance.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Purchase Amount (৳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("What did you buy? (e.g., Dinner, Gadget, Grocery)") },
+                    singleLine = true
+                )
+                Text("Category", style = MaterialTheme.typography.labelMedium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(categories) { cat ->
+                        FilterChip(
+                            selected = selectedCatId == cat.id,
+                            onClick = { selectedCatId = cat.id },
+                            label = { Text(cat.name) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val amt = amount.toDoubleOrNull() ?: 0.0
+                if (amt > 0.0) {
+                    val catName = categories.find { it.id == selectedCatId }?.name ?: "Shopping"
+                    onConfirm(amt, selectedCatId, catName, note)
+                }
+            }) {
+                Text("Record Purchase")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun CardLoanDialog(
+    card: CreditCard,
+    onDismiss: () -> Unit,
+    onConfirm: (Double, Double, Int, String, String) -> Unit
+) {
+    var principal by remember { mutableStateOf("") }
+    var feeOrInterest by remember { mutableStateOf("") }
+    var emiMonths by remember { mutableStateOf("1") }
+    var depositTo by remember { mutableStateOf("BANK") }
+    var note by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Take Loan from ${card.cardName}") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = principal,
+                    onValueChange = { principal = it },
+                    label = { Text("Loan Principal Amount (৳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = feeOrInterest,
+                    onValueChange = { feeOrInterest = it },
+                    label = { Text("Interest / Processing Fee (৳ Optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = emiMonths,
+                    onValueChange = { emiMonths = it },
+                    label = { Text("Repayment Months / EMI Tenure (1 = Next Bill)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Loan Purpose / Note") },
+                    singleLine = true
+                )
+                Text("Where did the loan money go?", style = MaterialTheme.typography.labelMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("BANK" to "To Bank", "CASH" to "Cash in Hand", "NONE" to "Don't Add").forEach { (key, label) ->
+                        FilterChip(
+                            selected = depositTo == key,
+                            onClick = { depositTo = key },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val p = principal.toDoubleOrNull() ?: 0.0
+                val f = feeOrInterest.toDoubleOrNull() ?: 0.0
+                val m = (emiMonths.toIntOrNull() ?: 1).coerceAtLeast(1)
+                if (p > 0.0) {
+                    onConfirm(p, f, m, depositTo, note)
+                }
+            }) {
+                Text("Add Card Loan")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun PayCardBillDialog(
+    summary: CardFinancialSummary,
+    currencySymbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Double, String, String) -> Unit
+) {
+    var amount by remember { mutableStateOf(summary.estimatedNextPaymentDue.takeIf { it > 0 }?.toString() ?: "") }
+    var source by remember { mutableStateOf(PaymentSource.BANK.name) }
+    var note by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pay ${summary.card.cardName} Bill") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Total Debt: ${Formatters.formatCurrency(summary.totalOutstandingDebt, currencySymbol)}\nNext Due: ${Formatters.formatCurrency(summary.estimatedNextPaymentDue, currencySymbol)} (Min: ${Formatters.formatCurrency(summary.minimumPaymentDue, currencySymbol)})",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    AssistChip(
+                        onClick = { amount = summary.estimatedNextPaymentDue.toString() },
+                        label = { Text("Next Due") }
+                    )
+                    AssistChip(
+                        onClick = { amount = summary.minimumPaymentDue.toString() },
+                        label = { Text("Min Due") }
+                    )
+                    AssistChip(
+                        onClick = { amount = summary.totalOutstandingDebt.toString() },
+                        label = { Text("Full Debt") }
+                    )
+                }
+
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Payment Amount (৳)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+
+                Text("Pay From Account", style = MaterialTheme.typography.labelMedium)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(listOf(PaymentSource.BANK, PaymentSource.CASH, PaymentSource.BKASH, PaymentSource.NAGAD)) { src ->
+                        FilterChip(
+                            selected = source == src.name,
+                            onClick = { source = src.name },
+                            label = { Text(src.displayName) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Note (Optional)") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amount.toDoubleOrNull() ?: 0.0
+                    if (amt > 0.0) {
+                        onConfirm(amt, source, note)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess)
+            ) {
+                Text("Confirm Bill Payment")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}package com.rajon.moneytracker.ui.screens.cards
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.rajon.moneytracker.data.model.*
+import com.rajon.moneytracker.data.repository.FinanceRepository
+import com.rajon.moneytracker.util.DateUtils
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.UUID
+
+data class CardFinancialSummary(
+    val card: CreditCard,
+    val totalOutstandingDebt: Double,
+    val availableCredit: Double,
+    val utilizationPercent: Float,
+    val currentMonthPurchases: Double,
+    val activeLoansTotalRemaining: Double,
+    val monthlyLoanEmiTotal: Double,
+    val estimatedNextPaymentDue: Double,
+    val minimumPaymentDue: Double,
+    val nextPaymentDateText: String,
+    val daysUntilDue: Int,
+    val cardTransactions: List<Transaction>
+)
+
+class CreditCardsViewModel(
+    private val financeRepository: FinanceRepository
+) : ViewModel() {
+
+    val settings: StateFlow<UserSettings> = financeRepository.observeSettings()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserSettings())
+
+    val cards: StateFlow<List<CreditCard>> = financeRepository.observeCreditCards()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val allTransactions: StateFlow<List<Transaction>> = financeRepository.observeAllTransactions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val categories: StateFlow<List<ExpenseCategory>> = financeRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val cardSummaries: StateFlow<List<CardFinancialSummary>> = combine(
+        cards,
+        allTransactions
+    ) { cardList, txs ->
+        val currentYM = DateUtils.getCurrentYearMonth()
+
+        cardList.map { card ->
+            // Match transactions linked to this card (or fallback to single card if legacy CARD tx has no linkedCardId)
+            val cardTxs = txs.filter { tx ->
+                tx.linkedCardId == card.id || (tx.linkedCardId == null && tx.paymentSource == PaymentSource.CARD.name && cardList.size == 1)
+            }.sortedByDescending { it.dateMillis }
+
+            // 1. All-time purchases on this card
+            val totalPurchases = cardTxs
+                .filter { it.type == TransactionType.EXPENSE.name && !it.isCardBillPayment }
+                .sumOf { it.amount }
+
+            // 2. All-time cash loans taken from this card
+            val totalLoansTaken = cardTxs
+                .filter { it.type == TransactionType.CARD_LOAN.name }
+                .sumOf { it.amount }
+
+            // 3. All-time bill repayments made toward this card
+            val totalPaymentsMade = cardTxs
+                .filter { it.isCardBillPayment || it.type == TransactionType.CARD_PAYMENT.name }
+                .sumOf { it.amount }
+
+            // Total Current Debt = Initial Previous Debt + Purchases + Loans - Payments
+            val totalDebt = (card.previousDebt + totalPurchases + totalLoansTaken - totalPaymentsMade).coerceAtLeast(0.0)
+            val available = (card.creditLimit - totalDebt).coerceAtLeast(0.0)
+            val utilPct = if (card.creditLimit > 0.0) ((totalDebt / card.creditLimit) * 100f).toFloat().coerceIn(0f, 100f) else 0f
+
+            // Current month's standard purchases
+            val thisMonthPurchases = cardTxs
+                .filter { it.yearMonth == currentYM && it.type == TransactionType.EXPENSE.name && !it.isCardBillPayment }
+                .sumOf { it.amount }
+
+            // Active EMI / monthly installment calculation for card loans
+            val monthlyEmi = cardTxs
+                .filter { it.type == TransactionType.CARD_LOAN.name && it.emiMonths > 0 }
+                .sumOf { it.amount / it.emiMonths }
+
+            val nonEmiLoans = cardTxs
+                .filter { it.type == TransactionType.CARD_LOAN.name && it.emiMonths <= 1 }
+                .sumOf { it.amount }
+
+            val thisMonthPayments = cardTxs
+                .filter { it.yearMonth == currentYM && (it.isCardBillPayment || it.type == TransactionType.CARD_PAYMENT.name) }
+                .sumOf { it.amount }
+
+            // Recommended Next Payment Due (Statement purchases + Monthly Loan EMI + Previous Unpaid Carryover - Paid this month)
+            val rawStatementDue = if (monthlyEmi > 0.0) {
+                (card.previousDebt + thisMonthPurchases + monthlyEmi + nonEmiLoans - thisMonthPayments).coerceIn(0.0, totalDebt)
+            } else {
+                totalDebt
+            }
+            val estimatedDue = if (rawStatementDue > 0.0) rawStatementDue else totalDebt
+
+            // Minimum Due ( typically 5% of total debt or 500 BDT, capped at totalDebt )
+            val minDue = if (totalDebt > 0.0) {
+                (totalDebt * (card.minimumDuePercent / 100.0)).coerceAtLeast(500.0).coerceAtMost(totalDebt)
+            } else 0.0
+
+            val (nextDateStr, daysLeft) = calculateNextPaymentDate(card.paymentDueDay)
+
+            CardFinancialSummary(
+                card = card,
+                totalOutstandingDebt = totalDebt,
+                availableCredit = available,
+                utilizationPercent = utilPct,
+                currentMonthPurchases = thisMonthPurchases,
+                activeLoansTotalRemaining = totalLoansTaken.coerceAtMost(totalDebt),
+                monthlyLoanEmiTotal = monthlyEmi,
+                estimatedNextPaymentDue = estimatedDue,
+                minimumPaymentDue = minDue,
+                nextPaymentDateText = nextDateStr,
+                daysUntilDue = daysLeft,
+                cardTransactions = cardTxs
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun saveCard(card: CreditCard) {
+        viewModelScope.launch {
+            financeRepository.saveCreditCard(card)
+        }
+    }
+
+    fun deleteCard(cardId: String) {
+        viewModelScope.launch {
+            financeRepository.deleteCreditCard(cardId)
+        }
+    }
+
+    /**
+     * Records a purchase made using the Credit Card.
+     * Increases card debt and counts as a monthly expense without reducing Bank balance.
+     */
+    fun recordCardPurchase(
+        card: CreditCard,
+        amount: Double,
+        categoryId: String,
+        categoryName: String,
+        note: String
+    ) {
+        viewModelScope.launch {
+            val tx = Transaction(
+                id = UUID.randomUUID().toString(),
+                yearMonth = DateUtils.getCurrentYearMonth(),
+                type = TransactionType.EXPENSE.name,
+                amount = amount,
+                dateMillis = System.currentTimeMillis(),
+                categoryId = categoryId,
+                categoryName = categoryName,
+                paymentSource = PaymentSource.CARD.name,
+                linkedCardId = card.id,
+                linkedCardName = "${card.bankName} ${card.cardName}".trim(),
+                note = note.ifBlank { "Card Purchase (${card.cardName})" },
+                createdAt = System.currentTimeMillis()
+            )
+            financeRepository.saveTransaction(tx)
+        }
+    }
+
+    /**
+     * Records a Loan / Cash Advance taken from the Credit Card.
+     * Increases card debt and optionally deposits the funds into Bank or Cash in Hand.
+     */
+    fun recordCardLoan(
+        card: CreditCard,
+        principalAmount: Double,
+        processingFeeOrInterest: Double,
+        emiMonths: Int,
+        depositToSource: String, // "BANK", "CASH", or "NONE"
+        note: String
+    ) {
+        viewModelScope.launch {
+            val totalLoanLiability = principalAmount + processingFeeOrInterest
+            val tx = Transaction(
+                id = UUID.randomUUID().toString(),
+                yearMonth = DateUtils.getCurrentYearMonth(),
+                type = TransactionType.CARD_LOAN.name,
+                amount = totalLoanLiability,
+                cardLoanPrincipal = principalAmount,
+                dateMillis = System.currentTimeMillis(),
+                categoryId = "card_loan",
+                categoryName = "Credit Card Loan",
+                paymentSource = depositToSource,
+                linkedCardId = card.id,
+                linkedCardName = "${card.bankName} ${card.cardName}".trim(),
+                emiMonths = emiMonths,
+                note = note.ifBlank { "Loan from ${card.cardName}" },
+                createdAt = System.currentTimeMillis()
+            )
+            financeRepository.saveTransaction(tx)
+        }
+    }
+
+    /**
+     * Pays down the Credit Card bill from Bank, Cash, bKash, or Nagad.
+     * Deducts from your chosen payment source and reduces Credit Card debt!
+     */
+    fun payCardBill(
+        card: CreditCard,
+        amount: Double,
+        paidFromSource: String, // "BANK", "CASH", "BKASH", "NAGAD"
+        note: String
+    ) {
+        viewModelScope.launch {
+            val tx = Transaction(
+                id = UUID.randomUUID().toString(),
+                yearMonth = DateUtils.getCurrentYearMonth(),
+                type = TransactionType.CARD_PAYMENT.name,
+                amount = amount,
+                dateMillis = System.currentTimeMillis(),
+                categoryId = "card_bill",
+                categoryName = "Credit Card Bill Payment",
+                paymentSource = paidFromSource,
+                linkedCardId = card.id,
+                linkedCardName = "${card.bankName} ${card.cardName}".trim(),
+                isCardBillPayment = true,
+                note = note.ifBlank { "Bill Payment - ${card.cardName}" },
+                createdAt = System.currentTimeMillis()
+            )
+            financeRepository.saveTransaction(tx)
+        }
+    }
+
+    fun deleteCardTransaction(txId: String) {
+        viewModelScope.launch {
+            financeRepository.deleteTransaction(txId)
+        }
+    }
+
+    private fun calculateNextPaymentDate(dueDay: Int): Pair<String, Int> {
+        val now = Calendar.getInstance()
+        val todayYear = now.get(Calendar.YEAR)
+        val todayMonth = now.get(Calendar.MONTH) // 0-based
+        val todayDay = now.get(Calendar.DAY_OF_MONTH)
+
+        val dueCal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+        }
+
+        val maxDayThisMonth = dueCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val clampedThisMonth = dueDay.coerceIn(1, maxDayThisMonth)
+
+        if (todayDay <= clampedThisMonth) {
+            dueCal.set(Calendar.DAY_OF_MONTH, clampedThisMonth)
+        } else {
+            dueCal.add(Calendar.MONTH, 1)
+            val maxDayNextMonth = dueCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            dueCal.set(Calendar.DAY_OF_MONTH, dueDay.coerceIn(1, maxDayNextMonth))
+        }
+
+        val diffMillis = (dueCal.timeInMillis - now.timeInMillis).coerceAtLeast(0L)
+        val daysLeft = (diffMillis / (1000L * 60 * 60 * 24)).toInt()
+        val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+        return Pair(sdf.format(dueCal.time), daysLeft)
+    }
+}package com.rajon.moneytracker.ui.screens.debts
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -2603,23 +3903,36 @@ class HistoryViewModel(
 }
 package com.rajon.moneytracker.ui.screens.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Atm
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rajon.moneytracker.data.di.AppViewModelProvider
 import com.rajon.moneytracker.data.model.MonthSetup
+import com.rajon.moneytracker.data.model.Transaction
+import com.rajon.moneytracker.data.model.TransactionType
 import com.rajon.moneytracker.ui.components.*
+import com.rajon.moneytracker.ui.screens.transactions.AddEditTransactionSheet
+import com.rajon.moneytracker.ui.screens.transactions.TransactionItemCard
+import com.rajon.moneytracker.ui.theme.BlueInfo
+import com.rajon.moneytracker.ui.theme.GreenSuccess
+import com.rajon.moneytracker.ui.theme.MintLight
+import com.rajon.moneytracker.ui.theme.RedError
 import com.rajon.moneytracker.util.DateUtils
 import com.rajon.moneytracker.util.Formatters
 
@@ -2631,194 +3944,412 @@ fun HomeScreen(
 ) {
     val currentYM by viewModel.currentYearMonth.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
     val monthSetup by viewModel.monthSetup.collectAsStateWithLifecycle()
     val breakdown by viewModel.balanceBreakdown.collectAsStateWithLifecycle()
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
     val recurringList by viewModel.recurringList.collectAsStateWithLifecycle()
 
     var showSetupDialog by remember { mutableStateOf(false) }
-    var showWithdrawalDialog by remember { mutableStateOf(false) }
+    var activeTxSheetType by remember { mutableStateOf<String?>(null) }
+    var editingTx by remember { mutableStateOf<Transaction?>(null) }
+    var deletingTx by remember { mutableStateOf<Transaction?>(null) }
 
-    LaunchedEffect(monthSetup) {
-        if (monthSetup == null) {
-            showSetupDialog = true
-        }
+    val categoryBreakdown = remember(transactions) {
+        transactions
+            .filter { it.type == TransactionType.EXPENSE.name }
+            .groupBy { it.categoryName.ifBlank { "General" } }
+            .mapValues { entry -> entry.value.sumOf { it.amount } }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val recentTransactions = remember(transactions) {
+        transactions.sortedByDescending { it.dateMillis }.take(8)
+    }
+
+    Scaffold(
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { activeTxSheetType = TransactionType.EXPENSE.name },
+                icon = { Icon(Icons.Default.AddShoppingCart, contentDescription = "Add Expense") },
+                text = { Text("Add Expense") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
         ) {
             item {
                 MonthSelectorBar(
                     currentYearMonth = currentYM,
-                    onPrevMonth = {
-                        val parts = currentYM.split("-")
-                        if (parts.size == 2) {
-                            var y = parts[0].toInt()
-                            var m = parts[1].toInt() - 1
-                            if (m < 1) { m = 12; y -= 1 }
-                            viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
-                        }
-                    },
-                    onNextMonth = {
-                        val parts = currentYM.split("-")
-                        if (parts.size == 2) {
-                            var y = parts[0].toInt()
-                            var m = parts[1].toInt() + 1
-                            if (m > 12) { m = 1; y += 1 }
-                            viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
-                        }
-                    }
+                    onPrevMonth = { viewModel.changeMonth(DateUtils.getPreviousYearMonth(currentYM)) },
+                    onNextMonth = { viewModel.changeMonth(DateUtils.getNextYearMonth(currentYM)) }
                 )
             }
 
+            // Dynamic Hero Balance Card
             item {
                 GradientCard {
-                    Text(
-                        text = "Bank Balance Left",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = Formatters.formatCurrency(breakdown.bankBalanceLeft, settings.currencySymbol),
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Total Available Balance (Bank + Cash)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.85f)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = Formatters.formatCurrency(
+                                    breakdown.bankBalanceLeft + breakdown.cashInHand,
+                                    settings.currencySymbol
+                                ),
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
+                        FilledTonalIconButton(
+                            onClick = { showSetupDialog = true },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color.White.copy(alpha = 0.18f),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(Icons.Default.Tune, contentDescription = "Edit Monthly Salary & Balance")
+                        }
+                    }
+
+                    if (breakdown.isCarriedOverFromPrevMonth) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            color = Color.White.copy(alpha = 0.16f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "↻ Auto-carried over from previous month's closing balance/salary",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MintLight,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.18f))
                     Spacer(modifier = Modifier.height(12.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
-                            Text(
-                                text = "Cash in Hand",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = Formatters.formatCurrency(breakdown.cashInHand, settings.currencySymbol),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "Total Spent",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = Formatters.formatCurrency(breakdown.totalSpent, settings.currencySymbol),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
+                        HeroMetricItem("Bank Balance", breakdown.bankBalanceLeft, settings.currencySymbol)
+                        HeroMetricItem("Cash in Hand", breakdown.cashInHand, settings.currencySymbol)
+                        HeroMetricItem("Month Spent", breakdown.totalSpent, settings.currencySymbol)
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val daysLeft = DateUtils.getDaysLeftInMonth()
-                    val safePerDay = if (daysLeft > 0) (breakdown.bankBalanceLeft / daysLeft).coerceAtLeast(0.0) else 0.0
-                    Text(
-                        text = "Safe to spend: ${Formatters.formatCurrency(safePerDay, settings.currencySymbol)} / day ($daysLeft days left)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val daysLeft = DateUtils.getDaysLeftInMonth()
+                        val totalSpendable = (breakdown.bankBalanceLeft + breakdown.cashInHand).coerceAtLeast(0.0)
+                        val safePerDay = if (daysLeft > 0) totalSpendable / daysLeft else 0.0
+                        Text(
+                            text = "Safe daily spend: ${Formatters.formatCurrency(safePerDay, settings.currencySymbol)}/day ($daysLeft days left)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MintLight
+                        )
+                    }
+                }
+            }
+
+            // Quick Action Buttons (Add Food/Expense, Add Income, ATM Withdraw, Setup)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    QuickActionButton(
+                        title = "Add Expense",
+                        icon = Icons.Default.Restaurant,
+                        color = RedError,
+                        modifier = Modifier.weight(1f),
+                        onClick = { activeTxSheetType = TransactionType.EXPENSE.name }
+                    )
+                    QuickActionButton(
+                        title = "Add Income",
+                        icon = Icons.Default.AddCard,
+                        color = GreenSuccess,
+                        modifier = Modifier.weight(1f),
+                        onClick = { activeTxSheetType = TransactionType.INCOME.name }
+                    )
+                    QuickActionButton(
+                        title = "ATM Withdraw",
+                        icon = Icons.Default.Atm,
+                        color = BlueInfo,
+                        modifier = Modifier.weight(1f),
+                        onClick = { activeTxSheetType = TransactionType.WITHDRAWAL.name }
+                    )
+                    QuickActionButton(
+                        title = "Salary Setup",
+                        icon = Icons.Default.AccountBalance,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showSetupDialog = true }
                     )
                 }
             }
 
+            // This Month's Financial Summary Grid
             item {
-                Row(
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = onNavigateToTransactions,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Transactions")
-                    }
-                    OutlinedButton(
-                        onClick = onNavigateToBudget,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Budgets")
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "This Month's Cashflow",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            TextButton(onClick = onNavigateToBudget) {
+                                Text("Manage Budgets →")
+                            }
+                        }
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SummaryStatBox("Opening Bank", breakdown.openingBankBalance, settings.currencySymbol, Modifier.weight(1f))
+                            SummaryStatBox("Total Income", breakdown.totalIncome, settings.currencySymbol, Modifier.weight(1f))
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SummaryStatBox("ATM Withdrawals", breakdown.totalWithdrawals, settings.currencySymbol, Modifier.weight(1f))
+                            SummaryStatBox("Bank/Wallet Spent", breakdown.totalBankExpenses + breakdown.totalCardExpenses + breakdown.totalWalletExpenses, settings.currencySymbol, Modifier.weight(1f))
+                        }
+
+                        val overallLimit = monthSetup?.overallBudgetLimit ?: settings.overallMonthlyLimit
+                        if (overallLimit > 0.0) {
+                            BudgetProgressBar(
+                                title = "Overall Monthly Budget",
+                                spent = breakdown.totalSpent,
+                                limit = overallLimit,
+                                currencySymbol = settings.currencySymbol
+                            )
+                        }
                     }
                 }
             }
 
-            if (monthSetup == null) {
+            // Category Donut Chart (if expenses exist)
+            if (categoryBreakdown.isNotEmpty()) {
                 item {
-                    Button(
-                        onClick = { showSetupDialog = true },
-                        modifier = Modifier.fillMaxWidth()
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Text("Configure Salary & Opening Balance for This Month")
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Where Your Money Went",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.align(Alignment.Start)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            DonutChart(data = categoryBreakdown, modifier = Modifier.size(160.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            categoryBreakdown.entries.sortedByDescending { it.value }.forEach { (cat, amt) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(cat, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        Formatters.formatCurrency(amt, settings.currencySymbol),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
 
+            // Upcoming Recurring Bills
             val unpaidRecurring = recurringList.filter { rec ->
                 rec.active && !rec.paidMonths.contains(currentYM) && !rec.skippedMonths.contains(currentYM)
             }
             if (unpaidRecurring.isNotEmpty()) {
                 item {
-                    Text(text = "Upcoming & Overdue Payments", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = "Upcoming Bills (${unpaidRecurring.size})",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
                 items(unpaidRecurring) { rec ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = rec.name, style = MaterialTheme.typography.titleLarge)
+                                Text(rec.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(
-                                    text = "Due Day: ${rec.dueDay} • ${Formatters.formatCurrency(rec.amount, settings.currencySymbol)}",
-                                    style = MaterialTheme.typography.bodyMedium
+                                    "Due Day ${rec.dueDay} • ${Formatters.formatCurrency(rec.amount, settings.currencySymbol)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Row {
-                                TextButton(onClick = { viewModel.markRecurringSkipped(rec) }) {
-                                    Text("Skip")
-                                }
-                                Button(onClick = { viewModel.markRecurringPaid(rec) }) {
-                                    Text("Pay")
-                                }
+                                TextButton(onClick = { viewModel.markRecurringSkipped(rec) }) { Text("Skip") }
+                                Button(onClick = { viewModel.markRecurringPaid(rec) }) { Text("Pay") }
                             }
                         }
                     }
                 }
             }
 
+            // Recent Activity (Expenses, Income, & Withdrawals with instant Edit/Delete)
             item {
-                Spacer(modifier = Modifier.height(72.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Recent Expenses & Withdrawals",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    TextButton(onClick = onNavigateToTransactions) {
+                        Text("See All")
+                    }
+                }
+            }
+
+            if (recentTransactions.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "No expenses or withdrawals recorded this month yet.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { activeTxSheetType = TransactionType.EXPENSE.name }) {
+                                Text("Record First Expense (e.g. Food)")
+                            }
+                        }
+                    }
+                }
+            } else {
+                items(recentTransactions, key = { it.id }) { tx ->
+                    TransactionItemCard(
+                        tx = tx,
+                        currencySymbol = settings.currencySymbol,
+                        onEdit = { editingTx = tx },
+                        onDelete = { deletingTx = tx }
+                    )
+                }
             }
         }
+    }
 
-        FloatingActionButton(
-            onClick = { showWithdrawalDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Atm, contentDescription = "Quick Withdrawal / ATM")
-        }
+    // Add or Edit Expense / Income / Withdrawal Bottom Sheet
+    if (activeTxSheetType != null || editingTx != null) {
+        AddEditTransactionSheet(
+            transaction = editingTx,
+            categories = categories,
+            currentYearMonth = currentYM,
+            initialType = activeTxSheetType ?: TransactionType.EXPENSE.name,
+            onDismiss = {
+                activeTxSheetType = null
+                editingTx = null
+            },
+            onSave = { tx ->
+                viewModel.saveTransaction(tx)
+                activeTxSheetType = null
+                editingTx = null
+            },
+            onDelete = if (editingTx != null) {
+                {
+                    viewModel.deleteTransaction(editingTx!!.id)
+                    editingTx = null
+                }
+            } else null
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (deletingTx != null) {
+        AlertDialog(
+            onDismissRequest = { deletingTx = null },
+            title = { Text("Delete Item?") },
+            text = {
+                Text("Remove '${deletingTx?.note?.ifBlank { deletingTx?.categoryName }}' (${Formatters.formatCurrency(deletingTx?.amount ?: 0.0, settings.currencySymbol)})?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteTransaction(deletingTx!!.id)
+                        deletingTx = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingTx = null }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showSetupDialog) {
         MonthSetupDialog(
             initial = monthSetup,
+            fallbackBankBalance = breakdown.openingBankBalance,
+            fallbackCashBalance = breakdown.openingCashBalance,
+            fallbackSalary = breakdown.setupSalary,
             onDismiss = { showSetupDialog = false },
             onSave = { setup ->
                 viewModel.saveMonthSetup(setup)
@@ -2826,14 +4357,75 @@ fun HomeScreen(
             }
         )
     }
+}
 
-    if (showWithdrawalDialog) {
-        QuickWithdrawalDialog(
-            onDismiss = { showWithdrawalDialog = false },
-            onConfirm = { amt ->
-                viewModel.recordQuickWithdrawal(amt)
-                showWithdrawalDialog = false
+@Composable
+private fun HeroMetricItem(label: String, amount: Double, currencySymbol: String) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.78f)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = Formatters.formatCurrency(amount, currencySymbol),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+    }
+}
+
+@Composable
+private fun QuickActionButton(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(color.copy(alpha = 0.14f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(20.dp))
             }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryStatBox(label: String, amount: Double, symbol: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.padding(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            Formatters.formatCurrency(amount, symbol),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -2841,93 +4433,78 @@ fun HomeScreen(
 @Composable
 fun MonthSetupDialog(
     initial: MonthSetup?,
+    fallbackBankBalance: Double = 0.0,
+    fallbackCashBalance: Double = 0.0,
+    fallbackSalary: Double = 0.0,
     onDismiss: () -> Unit,
     onSave: (MonthSetup) -> Unit
 ) {
-    var salary by remember { mutableStateOf(initial?.salary?.toString() ?: "") }
-    var extraInc by remember { mutableStateOf(initial?.extraIncome?.toString() ?: "") }
-    var openingBal by remember { mutableStateOf(initial?.openingBankBalance?.toString() ?: "") }
-    var overallLimit by remember { mutableStateOf(initial?.overallBudgetLimit?.toString() ?: "") }
+    var salary by remember { mutableStateOf((initial?.salary ?: fallbackSalary).takeIf { it > 0 }?.toString() ?: "") }
+    var extraInc by remember { mutableStateOf(initial?.extraIncome?.takeIf { it > 0 }?.toString() ?: "") }
+    var openingBankBal by remember { mutableStateOf((initial?.openingBankBalance ?: fallbackBankBalance).takeIf { it > 0 }?.toString() ?: "") }
+    var openingCashBal by remember { mutableStateOf((initial?.openingBalance ?: fallbackCashBalance).takeIf { it > 0 }?.toString() ?: "") }
+    var overallLimit by remember { mutableStateOf(initial?.overallBudgetLimit?.takeIf { it > 0 }?.toString() ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Monthly Budget & Balance Setup") },
+        title = { Text("Monthly Salary & Balance Setup") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Set your base figures for this month. Leave any field blank to keep it at 0.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 OutlinedTextField(
                     value = salary,
                     onValueChange = { salary = it },
-                    label = { Text("Monthly Salary") },
+                    label = { Text("Monthly Salary (Added to Bank)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = openingBankBal,
+                    onValueChange = { openingBankBal = it },
+                    label = { Text("Opening Bank Balance") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = openingCashBal,
+                    onValueChange = { openingCashBal = it },
+                    label = { Text("Opening Cash in Hand") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = extraInc,
                     onValueChange = { extraInc = it },
                     label = { Text("Extra Income (Optional)") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = openingBal,
-                    onValueChange = { openingBal = it },
-                    label = { Text("Opening Bank Balance") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = overallLimit,
                     onValueChange = { overallLimit = it },
-                    label = { Text("Overall Spending Limit (Optional)") },
+                    label = { Text("Overall Monthly Spending Limit") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
             }
         },
         confirmButton = {
             Button(onClick = {
-                val s = salary.toDoubleOrNull() ?: 0.0
-                val e = extraInc.toDoubleOrNull() ?: 0.0
-                val o = openingBal.toDoubleOrNull() ?: 0.0
-                val l = overallLimit.toDoubleOrNull() ?: 0.0
                 onSave(
                     MonthSetup(
-                        salary = s,
-                        extraIncome = e,
-                        openingBankBalance = o,
-                        overallBudgetLimit = l
+                        salary = salary.toDoubleOrNull() ?: 0.0,
+                        extraIncome = extraInc.toDoubleOrNull() ?: 0.0,
+                        openingBankBalance = openingBankBal.toDoubleOrNull() ?: 0.0,
+                        openingBalance = openingCashBal.toDoubleOrNull() ?: 0.0,
+                        overallBudgetLimit = overallLimit.toDoubleOrNull() ?: 0.0
                     )
                 )
             }) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
-
-@Composable
-fun QuickWithdrawalDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
-) {
-    var amountText by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Record ATM / Bank Withdrawal") },
-        text = {
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = { amountText = it },
-                label = { Text("Withdrawal Amount") },
-                singleLine = true
-            )
-        },
-        confirmButton = {
-            Button(onClick = {
-                val amt = amountText.toDoubleOrNull() ?: 0.0
-                if (amt > 0.0) onConfirm(amt)
-            }) {
-                Text("Record")
+                Text("Save Setup")
             }
         },
         dismissButton = {
@@ -2956,9 +4533,18 @@ class HomeViewModel(
     val settings: StateFlow<UserSettings> = financeRepository.observeSettings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserSettings())
 
+    val categories: StateFlow<List<ExpenseCategory>> = financeRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val monthSetup: StateFlow<MonthSetup?> = _currentYearMonth.flatMapLatest { ym ->
         financeRepository.observeMonthSetup(ym)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private val allMonthSetups: StateFlow<List<MonthSetup>> = financeRepository.observeAllMonthSetups()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val allTransactions: StateFlow<List<Transaction>> = financeRepository.observeAllTransactions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val transactions: StateFlow<List<Transaction>> = _currentYearMonth.flatMapLatest { ym ->
         financeRepository.observeTransactions(ym)
@@ -2975,19 +4561,92 @@ class HomeViewModel(
     val recurringList: StateFlow<List<RecurringPayment>> = financeRepository.observeRecurring()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val debtsList: StateFlow<List<DebtItem>> = financeRepository.observeDebts()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // --- FIXED: Handled null monthSetup safely for brand-new users ---
     val balanceBreakdown: StateFlow<BalanceBreakdown> = combine(
-        monthSetup, transactions, savingsDeposits, debtPayments
-    ) { setup, txs, deps, pays ->
-        val safeSetup = setup ?: MonthSetup(yearMonth = _currentYearMonth.value)
-        BalanceCalculator.calculate(safeSetup, txs, deps, pays)
+        _currentYearMonth,
+        monthSetup,
+        transactions,
+        savingsDeposits,
+        debtPayments,
+        allMonthSetups,
+        allTransactions
+    ) { args ->
+        @Suppress("UNCHECKED_CAST")
+        val ym = args[0] as String
+        val setup = args[1] as MonthSetup?
+        val txs = args[2] as List<Transaction>
+        val deps = args[3] as List<SavingsDeposit>
+        val pays = args[4] as List<DebtPaymentRecord>
+        val allSetups = args[5] as List<MonthSetup>
+        val allTxs = args[6] as List<Transaction>
+
+        // Find the most recent previous month setup or previous month activity
+        val prevYM = DateUtils.getPreviousYearMonth(ym)
+        val latestPrevSetup = allSetups
+            .filter { it.yearMonth < ym }
+            .maxByOrNull { it.yearMonth }
+
+        val prevMonthTxs = allTxs.filter { it.yearMonth == prevYM }
+        val prevBreakdown = if (latestPrevSetup != null || prevMonthTxs.isNotEmpty()) {
+            BalanceCalculator.calculate(
+                monthSetup = allSetups.find { it.yearMonth == prevYM } ?: latestPrevSetup,
+                transactions = prevMonthTxs,
+                savingsDeposits = emptyList(),
+                debtPayments = emptyList()
+            )
+        } else null
+
+        // Check if salary was added at the end of previous month (day >= 25) or in previous setup
+        val latePrevMonthSalaryTx = prevMonthTxs
+            .filter { it.type == TransactionType.INCOME.name && DateUtils.getDayOfMonth(it.dateMillis) >= 24 }
+            .sumOf { it.amount }
+
+        val fallbackSalary = when {
+            latePrevMonthSalaryTx > 0.0 -> latePrevMonthSalaryTx
+            latestPrevSetup != null && latestPrevSetup.salary > 0.0 -> latestPrevSetup.salary
+            else -> 0.0
+        }
+
+        val hasThisMonthIncomeTx = txs.any { it.type == TransactionType.INCOME.name }
+
+        if (setup == null) {
+            // Automatic rollover when new month hasn't been manually configured yet
+            val rolledOverBank = prevBreakdown?.bankBalanceLeft?.coerceAtLeast(0.0) ?: 0.0
+            val rolledOverCash = prevBreakdown?.cashInHand?.coerceAtLeast(0.0) ?: 0.0
+            val rolledOverSalary = if (hasThisMonthIncomeTx) 0.0 else if (rolledOverBank > 0.0 && latePrevMonthSalaryTx > 0.0) 0.0 else fallbackSalary
+
+            BalanceCalculator.calculate(
+                monthSetup = null,
+                transactions = txs,
+                savingsDeposits = deps,
+                debtPayments = pays,
+                carriedOverBankBalance = rolledOverBank,
+                carriedOverCashBalance = rolledOverCash,
+                carriedOverSalary = rolledOverSalary,
+                isCarriedOver = (rolledOverBank > 0.0 || rolledOverCash > 0.0 || rolledOverSalary > 0.0)
+            )
+        } else {
+            // Even if setup exists, if salary & opening bank are both 0 and no income tx added yet, carry over previous salary/balance
+            val effectiveSetup = if (setup.salary == 0.0 && setup.openingBankBalance == 0.0 && !hasThisMonthIncomeTx) {
+                setup.copy(
+                    openingBankBalance = prevBreakdown?.bankBalanceLeft?.coerceAtLeast(0.0) ?: 0.0,
+                    openingBalance = prevBreakdown?.cashInHand?.coerceAtLeast(0.0) ?: 0.0,
+                    salary = if ((prevBreakdown?.bankBalanceLeft ?: 0.0) > 0.0 && latePrevMonthSalaryTx > 0.0) 0.0 else fallbackSalary
+                )
+            } else {
+                setup
+            }
+            BalanceCalculator.calculate(
+                monthSetup = effectiveSetup,
+                transactions = txs,
+                savingsDeposits = deps,
+                debtPayments = pays,
+                isCarriedOver = effectiveSetup != setup
+            )
+        }
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
-        BalanceBreakdown(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        BalanceBreakdown(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     )
 
     init {
@@ -3006,17 +4665,16 @@ class HomeViewModel(
         }
     }
 
-    fun recordQuickWithdrawal(amount: Double) {
+    fun saveTransaction(tx: Transaction) {
         viewModelScope.launch {
-            val tx = Transaction(
-                yearMonth = _currentYearMonth.value,
-                type = TransactionType.WITHDRAWAL.name,
-                amount = amount,
-                dateMillis = System.currentTimeMillis(),
-                paymentSource = PaymentSource.BANK.name,
-                note = "ATM Withdrawal"
-            )
-            financeRepository.saveTransaction(tx)
+            val finalTx = if (tx.yearMonth.isBlank()) tx.copy(yearMonth = _currentYearMonth.value) else tx
+            financeRepository.saveTransaction(finalTx)
+        }
+    }
+
+    fun deleteTransaction(txId: String) {
+        viewModelScope.launch {
+            financeRepository.deleteTransaction(txId)
         }
     }
 
@@ -3045,6 +4703,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
+    onNavigateToSavings: () -> Unit = {},
     onNavigateToDebts: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -3063,9 +4722,19 @@ fun MoreScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
+                Card(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToSavings) {
+                    ListItem(
+                        headlineContent = { Text("Savings Goals") },
+                        supportingContent = { Text("Track your target savings & deposits") },
+                        leadingContent = { Icon(Icons.Default.Savings, contentDescription = null) }
+                    )
+                }
+            }
+            item {
                 Card(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToDebts) {
                     ListItem(
-                        headlineContent = { Text("Debts & Loans Tracker") },
+                        headlineContent = { Text("Personal Debts & Loans Tracker") },
+                        supportingContent = { Text("Track money borrowed or lent to people") },
                         leadingContent = { Icon(Icons.Default.Payments, contentDescription = null) }
                     )
                 }
@@ -3096,8 +4765,7 @@ fun MoreScreen(
             }
         }
     }
-}
-package com.rajon.moneytracker.ui.screens.more
+}package com.rajon.moneytracker.ui.screens.more
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -3403,26 +5071,42 @@ class SavingsViewModel(
 }
 package com.rajon.moneytracker.ui.screens.transactions
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.CreditCard
+import com.rajon.moneytracker.data.model.ExpenseCategory
 import com.rajon.moneytracker.data.model.PaymentSource
 import com.rajon.moneytracker.data.model.Transaction
 import com.rajon.moneytracker.data.model.TransactionType
 import com.rajon.moneytracker.ui.components.MonthSelectorBar
+import com.rajon.moneytracker.ui.theme.BlueInfo
+import com.rajon.moneytracker.ui.theme.GreenSuccess
+import com.rajon.moneytracker.ui.theme.OrangeWarning
+import com.rajon.moneytracker.ui.theme.RedError
 import com.rajon.moneytracker.util.DateUtils
 import com.rajon.moneytracker.util.Formatters
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -3432,111 +5116,129 @@ fun TransactionsScreen(
     val currentYM by viewModel.currentYearMonth.collectAsStateWithLifecycle()
     val transactions by viewModel.transactions.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val creditCards by viewModel.creditCards.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingTx by remember { mutableStateOf<Transaction?>(null) }
+    var deletingTx by remember { mutableStateOf<Transaction?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf("ALL") }
+
+    val filteredTransactions = remember(transactions, searchQuery, selectedFilter) {
+        transactions
+            .filter { tx ->
+                val matchesType = when (selectedFilter) {
+                    "ALL" -> true
+                    "CARD" -> tx.paymentSource == PaymentSource.CARD.name || tx.type == TransactionType.CARD_LOAN.name || tx.type == TransactionType.CARD_PAYMENT.name || tx.isCardBillPayment
+                    else -> tx.type == selectedFilter
+                }
+                val matchesQuery = searchQuery.isBlank() ||
+                    tx.note.contains(searchQuery, ignoreCase = true) ||
+                    tx.categoryName.contains(searchQuery, ignoreCase = true) ||
+                    tx.paymentSource.contains(searchQuery, ignoreCase = true) ||
+                    tx.linkedCardName.contains(searchQuery, ignoreCase = true)
+                matchesType && matchesQuery
+            }
+            .sortedByDescending { it.dateMillis }
+    }
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Transaction")
-            }
+            ExtendedFloatingActionButton(
+                onClick = { showAddDialog = true },
+                icon = { Icon(Icons.Default.Add, contentDescription = "Add") },
+                text = { Text("Add Expense / Tx") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             MonthSelectorBar(
                 currentYearMonth = currentYM,
-                onPrevMonth = {
-                    val parts = currentYM.split("-")
-                    if (parts.size == 2) {
-                        var y = parts[0].toInt()
-                        var m = parts[1].toInt() - 1
-                        if (m < 1) { m = 12; y -= 1 }
-                        viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
-                    }
-                },
-                onNextMonth = {
-                    val parts = currentYM.split("-")
-                    if (parts.size == 2) {
-                        var y = parts[0].toInt()
-                        var m = parts[1].toInt() + 1
-                        if (m > 12) { m = 1; y += 1 }
-                        viewModel.changeMonth(DateUtils.formatYearMonth(y, m))
-                    }
-                }
+                onPrevMonth = { viewModel.changeMonth(DateUtils.getPreviousYearMonth(currentYM)) },
+                onNextMonth = { viewModel.changeMonth(DateUtils.getNextYearMonth(currentYM)) }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (transactions.isEmpty()) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search food, bills, card, withdrawal...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val filters = listOf(
+                    "ALL" to "All",
+                    "EXPENSE" to "Expenses",
+                    "INCOME" to "Income",
+                    "WITHDRAWAL" to "Withdrawals",
+                    "CARD" to "Card Activity"
+                )
+                items(filters) { (key, label) ->
+                    FilterChip(
+                        selected = selectedFilter == key,
+                        onClick = { selectedFilter = key },
+                        label = { Text(label) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (filteredTransactions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "No transactions found for this month.", style = MaterialTheme.typography.bodyMedium)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.ReceiptLong,
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "No transactions found.",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Tap '+ Add Expense / Tx' to record food, bills, or ATM withdrawals.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 88.dp)
                 ) {
-                    items(transactions, key = { it.id }) { tx ->
-                        val dismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart) {
-                                    viewModel.deleteTransaction(tx.id)
-                                    true
-                                } else false
-                            }
+                    items(filteredTransactions, key = { it.id }) { tx ->
+                        TransactionItemCard(
+                            tx = tx,
+                            onEdit = { editingTx = tx },
+                            onDelete = { deletingTx = tx }
                         )
-
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            backgroundContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        ) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = { editingTx = tx }
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = tx.categoryName.ifBlank { tx.type },
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                        Text(
-                                            text = "${Formatters.formatDate(tx.dateMillis)} • ${tx.paymentSource}",
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        if (tx.note.isNotBlank()) {
-                                            Text(text = tx.note, style = MaterialTheme.typography.labelSmall)
-                                        }
-                                    }
-                                    Text(
-                                        text = Formatters.formatCurrency(tx.amount),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = if (tx.type == TransactionType.INCOME.name) com.rajon.moneytracker.ui.theme.GreenSuccess else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -3547,6 +5249,7 @@ fun TransactionsScreen(
         AddEditTransactionSheet(
             transaction = editingTx,
             categories = categories,
+            creditCards = creditCards,
             currentYearMonth = currentYM,
             onDismiss = {
                 showAddDialog = false
@@ -3556,8 +5259,151 @@ fun TransactionsScreen(
                 viewModel.saveTransaction(tx)
                 showAddDialog = false
                 editingTx = null
+            },
+            onDelete = if (editingTx != null) {
+                {
+                    viewModel.deleteTransaction(editingTx!!.id)
+                    editingTx = null
+                }
+            } else null
+        )
+    }
+
+    if (deletingTx != null) {
+        AlertDialog(
+            onDismissRequest = { deletingTx = null },
+            title = { Text("Delete Transaction?") },
+            text = {
+                Text("Are you sure you want to delete '${deletingTx?.note?.ifBlank { deletingTx?.categoryName }}' (${Formatters.formatCurrency(deletingTx?.amount ?: 0.0)})? Your balances will update immediately.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteTransaction(deletingTx!!.id)
+                        deletingTx = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingTx = null }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@Composable
+fun TransactionItemCard(
+    tx: Transaction,
+    currencySymbol: String = "৳",
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val isIncome = tx.type == TransactionType.INCOME.name || tx.type == TransactionType.CARD_LOAN.name
+    val isWithdrawal = tx.type == TransactionType.WITHDRAWAL.name
+    val isCardPayment = tx.type == TransactionType.CARD_PAYMENT.name || tx.isCardBillPayment
+
+    val badgeColor = when {
+        isIncome -> GreenSuccess
+        isWithdrawal || isCardPayment -> BlueInfo
+        tx.isExtra -> OrangeWarning
+        else -> RedError
+    }
+
+    val icon = when {
+        tx.type == TransactionType.CARD_LOAN.name -> Icons.Default.RequestQuote
+        isCardPayment -> Icons.Default.CreditScore
+        tx.paymentSource == PaymentSource.CARD.name -> Icons.Default.CreditCard
+        isIncome -> Icons.Default.TrendingUp
+        isWithdrawal -> Icons.Default.Atm
+        tx.categoryName.contains("Food", true) -> Icons.Default.Restaurant
+        tx.categoryName.contains("Transport", true) -> Icons.Default.DirectionsCar
+        tx.categoryName.contains("Shopping", true) -> Icons.Default.ShoppingBag
+        else -> Icons.Default.Receipt
+    }
+
+    val sourceLabel = if (tx.linkedCardName.isNotBlank()) {
+        "${tx.paymentSource} (${tx.linkedCardName})"
+    } else {
+        tx.paymentSource
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onEdit
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(badgeColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = badgeColor)
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = tx.note.ifBlank {
+                        if (isWithdrawal) "ATM / Cash Withdrawal" else tx.categoryName.ifBlank { tx.type }
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${tx.categoryName.ifBlank { tx.type }} • $sourceLabel • ${Formatters.formatDate(tx.dateMillis)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                val prefix = when {
+                    isIncome -> "+"
+                    isWithdrawal -> "⇄ "
+                    else -> "-"
+                }
+                Text(
+                    text = "$prefix${Formatters.formatCurrency(tx.amount, currencySymbol)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = badgeColor
+                )
+                Row {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Default.DeleteOutline,
+                            contentDescription = "Delete",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -3565,34 +5411,98 @@ fun TransactionsScreen(
 @Composable
 fun AddEditTransactionSheet(
     transaction: Transaction?,
-    categories: List<com.rajon.moneytracker.data.model.ExpenseCategory>,
+    categories: List<ExpenseCategory>,
+    creditCards: List<CreditCard> = emptyList(),
     currentYearMonth: String,
+    initialType: String = TransactionType.EXPENSE.name,
     onDismiss: () -> Unit,
-    onSave: (Transaction) -> Unit
+    onSave: (Transaction) -> Unit,
+    onDelete: (() -> Unit)? = null
 ) {
     var amount by remember { mutableStateOf(transaction?.amount?.toString() ?: "") }
     var note by remember { mutableStateOf(transaction?.note ?: "") }
-    var selectedType by remember { mutableStateOf(transaction?.type ?: TransactionType.EXPENSE.name) }
-    var selectedSource by remember { mutableStateOf(transaction?.paymentSource ?: PaymentSource.CASH.name) }
-    var selectedCategory by remember { mutableStateOf(transaction?.categoryId ?: (categories.firstOrNull()?.id ?: "")) }
-    var isExtra by remember { mutableStateOf(transaction?.isExtra ?: false) }
+    var selectedType by remember { mutableStateOf(transaction?.type ?: initialType) }
+    var selectedSource by remember {
+        mutableStateOf(
+            transaction?.paymentSource ?: if (selectedType == TransactionType.WITHDRAWAL.name) PaymentSource.BANK.name else PaymentSource.CASH.name
+        )
+    }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    var selectedCardId by remember {
+        mutableStateOf(transaction?.linkedCardId ?: creditCards.firstOrNull()?.id)
+    }
+
+    val defaultCatId = categories.firstOrNull { it.name.contains("Food", ignoreCase = true) }?.id
+        ?: categories.firstOrNull()?.id
+        ?: "food"
+
+    var selectedCategoryId by remember {
+        mutableStateOf(transaction?.categoryId?.ifBlank { defaultCatId } ?: defaultCatId)
+    }
+    var customCategoryName by remember { mutableStateOf("") }
+    var isExtra by remember { mutableStateOf(transaction?.isExtra ?: false) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 12.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = if (transaction == null) "Add Transaction" else "Edit Transaction",
-                style = MaterialTheme.typography.headlineMedium
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (transaction == null) "Record Transaction" else "Modify Transaction",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (onDelete != null) {
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Transaction", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+
+            // Transaction Type Selector
+            Text("Transaction Type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val types = listOf(
+                    TransactionType.EXPENSE.name to "Expense",
+                    TransactionType.INCOME.name to "Income / Salary",
+                    TransactionType.WITHDRAWAL.name to "ATM Withdrawal"
+                )
+                types.forEach { (typeKey, label) ->
+                    FilterChip(
+                        selected = selectedType == typeKey,
+                        onClick = {
+                            selectedType = typeKey
+                            if (typeKey == TransactionType.WITHDRAWAL.name) {
+                                selectedSource = PaymentSource.BANK.name
+                            }
+                        },
+                        label = { Text(label) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
 
             OutlinedTextField(
                 value = amount,
-                onValueChange = { amount = it },
-                label = { Text("Amount") },
+                onValueChange = {
+                    amount = it
+                    errorText = null
+                },
+                label = { Text("Amount (৳)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -3600,69 +5510,162 @@ fun AddEditTransactionSheet(
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("Note (Optional)") },
+                label = {
+                    Text(
+                        when (selectedType) {
+                            TransactionType.EXPENSE.name -> "What did you buy? (e.g., Food, Groceries, Rickshaw)"
+                            TransactionType.INCOME.name -> "Income Source (e.g., Monthly Salary, Bonus, Freelance)"
+                            else -> "Withdrawal Note (e.g., ATM Cash Withdrawal)"
+                        }
+                    )
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { selectedType = TransactionType.EXPENSE.name },
-                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedType == TransactionType.EXPENSE.name) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Text("Expense")
+            // Category Selection for Expenses
+            if (selectedType == TransactionType.EXPENSE.name) {
+                Text("Select Category", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(categories) { cat ->
+                        FilterChip(
+                            selected = selectedCategoryId == cat.id && customCategoryName.isBlank(),
+                            onClick = {
+                                selectedCategoryId = cat.id
+                                customCategoryName = ""
+                            },
+                            label = { Text(cat.name) }
+                        )
+                    }
                 }
-                Button(
-                    onClick = { selectedType = TransactionType.INCOME.name },
-                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedType == TransactionType.INCOME.name) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Text("Income")
+
+                OutlinedTextField(
+                    value = customCategoryName,
+                    onValueChange = { customCategoryName = it },
+                    label = { Text("Or type custom category (Optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Payment Method Selection
+            if (selectedType != TransactionType.WITHDRAWAL.name) {
+                Text(
+                    text = if (selectedType == TransactionType.INCOME.name) "Deposit To" else "Paid Via",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                val availableSources = if (selectedType == TransactionType.INCOME.name) {
+                    PaymentSource.values().filter { it != PaymentSource.CARD }
+                } else {
+                    PaymentSource.values().toList()
                 }
-                Button(
-                    onClick = { selectedType = TransactionType.WITHDRAWAL.name },
-                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedType == TransactionType.WITHDRAWAL.name) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(availableSources) { source ->
+                        FilterChip(
+                            selected = selectedSource == source.name,
+                            onClick = {
+                                selectedSource = source.name
+                                if (source == PaymentSource.CARD && selectedCardId == null) {
+                                    selectedCardId = creditCards.firstOrNull()?.id
+                                }
+                            },
+                            label = { Text(source.displayName) }
+                        )
+                    }
+                }
+
+                // If Paid Via == CARD, let the user choose which Credit Card they used
+                if (selectedType == TransactionType.EXPENSE.name && selectedSource == PaymentSource.CARD.name) {
+                    if (creditCards.isNotEmpty()) {
+                        Text(
+                            text = "Select Credit Card (Adds to Card Debt)",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(creditCards) { card ->
+                                FilterChip(
+                                    selected = selectedCardId == card.id,
+                                    onClick = { selectedCardId = card.id },
+                                    label = { Text("${card.bankName} ${card.cardName}") }
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "Tip: Add your card in the 'Credit Card' tab to track its billing date & limit.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OrangeWarning
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "Transfers money directly from Bank Balance → Cash in Hand.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BlueInfo
+                )
+            }
+
+            if (selectedType == TransactionType.EXPENSE.name) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Withdrawal")
+                    Text("Mark as Extra / Unplanned Expense", color = MaterialTheme.colorScheme.onSurface)
+                    Switch(checked = isExtra, onCheckedChange = { isExtra = it })
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Extra (Unplanned Expense)")
-                Switch(checked = isExtra, onCheckedChange = { isExtra = it })
+            if (errorText != null) {
+                Text(text = errorText!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             Button(
                 onClick = {
                     val amt = amount.toDoubleOrNull() ?: 0.0
-                    val catObj = categories.find { it.id == selectedCategory }
-                    if (amt > 0.0) {
-                        onSave(
-                            (transaction ?: Transaction(id = java.util.UUID.randomUUID().toString())).copy(
-                                yearMonth = currentYearMonth,
-                                amount = amt,
-                                type = selectedType,
-                                paymentSource = selectedSource,
-                                categoryId = selectedCategory,
-                                categoryName = catObj?.name ?: "General",
-                                note = note,
-                                isExtra = isExtra,
-                                dateMillis = transaction?.dateMillis ?: System.currentTimeMillis()
-                            )
-                        )
+                    if (amt <= 0.0) {
+                        errorText = "Please enter a valid amount greater than 0"
+                        return@Button
                     }
+                    val chosenCatObj = categories.find { it.id == selectedCategoryId }
+                    val resolvedCatName = when {
+                        selectedType == TransactionType.WITHDRAWAL.name -> "Cash Withdrawal"
+                        selectedType == TransactionType.INCOME.name -> note.ifBlank { "Income" }
+                        customCategoryName.isNotBlank() -> customCategoryName.trim()
+                        else -> chosenCatObj?.name ?: "Food & Dining"
+                    }
+
+                    val resolvedNote = note.ifBlank { resolvedCatName }
+                    val isCardSwipe = selectedType == TransactionType.EXPENSE.name && selectedSource == PaymentSource.CARD.name
+                    val chosenCard = if (isCardSwipe) creditCards.find { it.id == selectedCardId } else null
+
+                    onSave(
+                        (transaction ?: Transaction(id = UUID.randomUUID().toString(), createdAt = System.currentTimeMillis())).copy(
+                            yearMonth = currentYearMonth,
+                            amount = amt,
+                            type = selectedType,
+                            paymentSource = if (selectedType == TransactionType.WITHDRAWAL.name) PaymentSource.BANK.name else selectedSource,
+                            categoryId = if (selectedType == TransactionType.EXPENSE.name) selectedCategoryId else selectedType.lowercase(),
+                            categoryName = resolvedCatName,
+                            note = resolvedNote,
+                            isExtra = if (selectedType == TransactionType.EXPENSE.name) isExtra else false,
+                            linkedCardId = chosenCard?.id,
+                            linkedCardName = if (chosenCard != null) "${chosenCard.bankName} ${chosenCard.cardName}".trim() else "",
+                            dateMillis = transaction?.dateMillis ?: System.currentTimeMillis()
+                        )
+                    )
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp)
             ) {
-                Text("Save Transaction")
+                Text(if (transaction == null) "Save Transaction" else "Update Transaction", style = MaterialTheme.typography.titleMedium)
             }
         }
     }
-}
-package com.rajon.moneytracker.ui.screens.transactions
+}package com.rajon.moneytracker.ui.screens.transactions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -3680,6 +5683,9 @@ class TransactionsViewModel(
     val currentYearMonth: StateFlow<String> = _currentYearMonth.asStateFlow()
 
     val categories: StateFlow<List<ExpenseCategory>> = financeRepository.observeCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val creditCards: StateFlow<List<CreditCard>> = financeRepository.observeCreditCards()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val transactions: StateFlow<List<Transaction>> = _currentYearMonth.flatMapLatest { ym ->
@@ -3702,29 +5708,41 @@ class TransactionsViewModel(
             financeRepository.deleteTransaction(txId)
         }
     }
-}
-package com.rajon.moneytracker.ui.theme
+}package com.rajon.moneytracker.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val TealPrimary = Color(0xFF00796B)
-val TealDark = Color(0xFF004D40)
-val TealLight = Color(0xFF48A999)
-val MintAccent = Color(0xFF26A69A)
-val MintLight = Color(0xFFA7FFEB)
+// Modern Fintech Emerald & Deep Slate Palette
+val TealPrimary = Color(0xFF00695C)
+val TealDark = Color(0xFF003D33)
+val TealLight = Color(0xFF4DB6AC)
+val MintAccent = Color(0xFF00897B)
+val MintLight = Color(0xFFE0F2F1)
 
-val BackgroundLight = Color(0xFFF7F9F9)
+// Gradient Colors (Guaranteed contrast with White text)
+val HeroGradientStart = Color(0xFF0F2027)
+val HeroGradientMid = Color(0xFF203A43)
+val HeroGradientEnd = Color(0xFF2C5364)
+
+// Light Mode Surfaces & High-Contrast Text
+val BackgroundLight = Color(0xFFF4F6F9)
 val SurfaceLight = Color(0xFFFFFFFF)
-val OnSurfaceLight = Color(0xFF1A1C1E)
+val SurfaceVariantLight = Color(0xFFE8ECEF)
+val OnSurfaceLight = Color(0xFF111827)        // Crisp near-black
+val OnSurfaceVariantLight = Color(0xFF4B5563) // Clear slate gray
 
-val BackgroundDark = Color(0xFF111414)
-val SurfaceDark = Color(0xFF1C2020)
-val OnSurfaceDark = Color(0xFFE1E3E3)
+// Dark Mode Surfaces & High-Contrast Text
+val BackgroundDark = Color(0xFF0B0F19)
+val SurfaceDark = Color(0xFF161F30)
+val SurfaceVariantDark = Color(0xFF232F46)
+val OnSurfaceDark = Color(0xFFF9FAFB)         // Crisp white
+val OnSurfaceVariantDark = Color(0xFF9CA3AF)  // Readable silver-gray
 
-val RedError = Color(0xFFBA1A1A)
-val OrangeWarning = Color(0xFFD97706)
-val GreenSuccess = Color(0xFF16A34A)
-package com.rajon.moneytracker.ui.theme
+// Semantic Status Colors
+val RedError = Color(0xFFEF4444)
+val OrangeWarning = Color(0xFFF59E0B)
+val GreenSuccess = Color(0xFF10B981)
+val BlueInfo = Color(0xFF3B82F6)package com.rajon.moneytracker.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
@@ -3738,23 +5756,35 @@ private val LightColorScheme = lightColorScheme(
     onPrimaryContainer = TealDark,
     secondary = MintAccent,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFB2DFDB),
+    onSecondaryContainer = TealDark,
     background = BackgroundLight,
+    onBackground = OnSurfaceLight,
     surface = SurfaceLight,
     onSurface = OnSurfaceLight,
-    error = RedError
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = OnSurfaceVariantLight,
+    error = RedError,
+    onError = Color.White
 )
 
 private val DarkColorScheme = darkColorScheme(
     primary = TealLight,
-    onPrimary = TealDark,
-    primaryContainer = TealDark,
+    onPrimary = Color(0xFF00251A),
+    primaryContainer = TealPrimary,
     onPrimaryContainer = MintLight,
     secondary = MintAccent,
-    onSecondary = Color.Black,
+    onSecondary = Color.White,
+    secondaryContainer = SurfaceVariantDark,
+    onSecondaryContainer = MintLight,
     background = BackgroundDark,
+    onBackground = OnSurfaceDark,
     surface = SurfaceDark,
     onSurface = OnSurfaceDark,
-    error = RedError
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    error = RedError,
+    onError = Color.White
 )
 
 @Composable
@@ -3769,8 +5799,7 @@ fun MoneyTrackerTheme(
         typography = Typography,
         content = content
     )
-}
-package com.rajon.moneytracker.ui.theme
+}package com.rajon.moneytracker.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -3819,6 +5848,7 @@ val Typography = Typography(
 package com.rajon.moneytracker.util
 
 import java.util.Calendar
+import java.util.Locale
 
 object DateUtils {
     fun getCurrentYearMonth(): String {
@@ -3827,14 +5857,47 @@ object DateUtils {
     }
 
     fun formatYearMonth(year: Int, month: Int): String {
-        return String.format(java.util.Locale.US, "%d-%02d", year, month)
+        return String.format(Locale.US, "%d-%02d", year, month)
+    }
+
+    fun getPreviousYearMonth(yearMonth: String): String {
+        val parts = yearMonth.split("-")
+        if (parts.size == 2) {
+            var y = parts[0].toIntOrNull() ?: return yearMonth
+            var m = (parts[1].toIntOrNull() ?: return yearMonth) - 1
+            if (m < 1) {
+                m = 12
+                y -= 1
+            }
+            return formatYearMonth(y, m)
+        }
+        return yearMonth
+    }
+
+    fun getNextYearMonth(yearMonth: String): String {
+        val parts = yearMonth.split("-")
+        if (parts.size == 2) {
+            var y = parts[0].toIntOrNull() ?: return yearMonth
+            var m = (parts[1].toIntOrNull() ?: return yearMonth) + 1
+            if (m > 12) {
+                m = 1
+                y += 1
+            }
+            return formatYearMonth(y, m)
+        }
+        return yearMonth
     }
 
     fun getDaysLeftInMonth(): Int {
         val cal = Calendar.getInstance()
         val today = cal.get(Calendar.DAY_OF_MONTH)
         val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        return (maxDay - today).coerceAtLeast(1)
+        return (maxDay - today + 1).coerceAtLeast(1)
+    }
+
+    fun getDayOfMonth(millis: Long): Int {
+        val cal = Calendar.getInstance().apply { timeInMillis = millis }
+        return cal.get(Calendar.DAY_OF_MONTH)
     }
 
     fun clampDueDay(year: Int, month: Int, dueDay: Int): Int {
@@ -3846,8 +5909,7 @@ object DateUtils {
         val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
         return dueDay.coerceIn(1, maxDay)
     }
-}
-package com.rajon.moneytracker.util
+}package com.rajon.moneytracker.util
 
 import java.text.NumberFormat
 import java.util.Locale
