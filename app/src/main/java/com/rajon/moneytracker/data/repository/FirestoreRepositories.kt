@@ -3,9 +3,11 @@ package com.rajon.moneytracker.data.repository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.rajon.moneytracker.data.model.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.tasks.await
 
 class FirebaseAuthRepository : AuthRepository {
@@ -61,6 +63,16 @@ class FirebaseAuthRepository : AuthRepository {
 class FirestoreFinanceRepository : FinanceRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val currentUidFlow: Flow<String?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { fa ->
+            trySend(fa.currentUser?.uid)
+        }
+        auth.addAuthStateListener(listener)
+        trySend(auth.currentUser?.uid)
+        awaitClose { auth.removeAuthStateListener(listener) }
+    }.distinctUntilChanged()
 
     private val userId: String
         get() = auth.currentUser?.uid ?: throw IllegalStateException("User not logged in")
@@ -68,57 +80,102 @@ class FirestoreFinanceRepository : FinanceRepository {
     private val userDoc
         get() = firestore.collection("users").document(userId)
 
-    override fun observeSettings(): Flow<UserSettings> = callbackFlow {
-        val listener = userDoc.collection("settings").document("profile")
-            .addSnapshotListener { snapshot, _ ->
-                val settings = snapshot?.toObject(UserSettings::class.java) ?: UserSettings()
-                trySend(settings)
-            }
-        awaitClose { listener.remove() }
-    }
+    // Pre-warmed, in-memory cached flows so tab switches emit in 0ms without flashing empty states
+    private val cachedSettingsFlow: SharedFlow<UserSettings> = currentUidFlow.flatMapLatest { uid ->
+        if (uid == null) flowOf(UserSettings())
+        else callbackFlow {
+            val listener = firestore.collection("users").document(uid)
+                .collection("settings").document("profile")
+                .addSnapshotListener { snapshot, _ ->
+                    trySend(snapshot?.toObject(UserSettings::class.java) ?: UserSettings())
+                }
+            awaitClose { listener.remove() }
+        }
+    }.shareIn(repoScope, SharingStarted.Eagerly, replay = 1)
+
+    private val cachedMonthSetupsFlow: SharedFlow<List<MonthSetup>> = currentUidFlow.flatMapLatest { uid ->
+        if (uid == null) flowOf(emptyList())
+        else callbackFlow {
+            val listener = firestore.collection("users").document(uid)
+                .collection("month_setups")
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { doc ->
+                        doc.toObject(MonthSetup::class.java)?.copy(yearMonth = doc.id)
+                    } ?: emptyList()
+                    trySend(list)
+                }
+            awaitClose { listener.remove() }
+        }
+    }.shareIn(repoScope, SharingStarted.Eagerly, replay = 1)
+
+    private val cachedCategoriesFlow: SharedFlow<List<ExpenseCategory>> = currentUidFlow.flatMapLatest { uid ->
+        if (uid == null) flowOf(emptyList())
+        else callbackFlow {
+            val listener = firestore.collection("users").document(uid)
+                .collection("categories")
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { it.toObject(ExpenseCategory::class.java) } ?: emptyList()
+                    trySend(list)
+                }
+            awaitClose { listener.remove() }
+        }
+    }.shareIn(repoScope, SharingStarted.Eagerly, replay = 1)
+
+    private val cachedAllTransactionsFlow: SharedFlow<List<Transaction>> = currentUidFlow.flatMapLatest { uid ->
+        if (uid == null) flowOf(emptyList())
+        else callbackFlow {
+            val listener = firestore.collection("users").document(uid)
+                .collection("transactions")
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { it.toObject(Transaction::class.java) } ?: emptyList()
+                    trySend(list)
+                }
+            awaitClose { listener.remove() }
+        }
+    }.shareIn(repoScope, SharingStarted.Eagerly, replay = 1)
+
+    private val cachedCreditCardsFlow: SharedFlow<List<CreditCard>> = currentUidFlow.flatMapLatest { uid ->
+        if (uid == null) flowOf(emptyList())
+        else callbackFlow {
+            val listener = firestore.collection("users").document(uid)
+                .collection("credit_cards")
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { it.toObject(CreditCard::class.java) } ?: emptyList()
+                    trySend(list)
+                }
+            awaitClose { listener.remove() }
+        }
+    }.shareIn(repoScope, SharingStarted.Eagerly, replay = 1)
+
+    private val cachedBudgetsFlow: SharedFlow<List<CategoryBudget>> = currentUidFlow.flatMapLatest { uid ->
+        if (uid == null) flowOf(emptyList())
+        else callbackFlow {
+            val listener = firestore.collection("users").document(uid)
+                .collection("budgets")
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { it.toObject(CategoryBudget::class.java) } ?: emptyList()
+                    trySend(list)
+                }
+            awaitClose { listener.remove() }
+        }
+    }.shareIn(repoScope, SharingStarted.Eagerly, replay = 1)
+
+    override fun observeSettings(): Flow<UserSettings> = cachedSettingsFlow
 
     override suspend fun updateSettings(settings: UserSettings) {
         userDoc.collection("settings").document("profile").set(settings).await()
     }
 
-    override fun observeMonthSetup(yearMonth: String): Flow<MonthSetup?> = callbackFlow {
-        val listener = userDoc.collection("month_setups").document(yearMonth)
-            .addSnapshotListener { snapshot, _ ->
-                if (snapshot == null || !snapshot.exists()) {
-                    trySend(null)
-                } else {
-                    val setup = snapshot.toObject(MonthSetup::class.java)?.copy(
-                        yearMonth = yearMonth
-                    )
-                    trySend(setup)
-                }
-            }
-        awaitClose { listener.remove() }
-    }
+    override fun observeMonthSetup(yearMonth: String): Flow<MonthSetup?> =
+        cachedMonthSetupsFlow.map { list -> list.find { it.yearMonth == yearMonth } }
 
-    override fun observeAllMonthSetups(): Flow<List<MonthSetup>> = callbackFlow {
-        val listener = userDoc.collection("month_setups")
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(MonthSetup::class.java)?.copy(yearMonth = doc.id)
-                } ?: emptyList()
-                trySend(list)
-            }
-        awaitClose { listener.remove() }
-    }
+    override fun observeAllMonthSetups(): Flow<List<MonthSetup>> = cachedMonthSetupsFlow
 
     override suspend fun saveMonthSetup(setup: MonthSetup) {
         userDoc.collection("month_setups").document(setup.yearMonth).set(setup).await()
     }
 
-    override fun observeCategories(): Flow<List<ExpenseCategory>> = callbackFlow {
-        val listener = userDoc.collection("categories")
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(ExpenseCategory::class.java) } ?: emptyList()
-                trySend(list)
-            }
-        awaitClose { listener.remove() }
-    }
+    override fun observeCategories(): Flow<List<ExpenseCategory>> = cachedCategoriesFlow
 
     override suspend fun ensureDefaultCategories() {
         val ref = userDoc.collection("categories")
@@ -151,24 +208,10 @@ class FirestoreFinanceRepository : FinanceRepository {
         userDoc.collection("categories").document(categoryId).delete().await()
     }
 
-    override fun observeTransactions(yearMonth: String): Flow<List<Transaction>> = callbackFlow {
-        val listener = userDoc.collection("transactions")
-            .whereEqualTo("yearMonth", yearMonth)
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(Transaction::class.java) } ?: emptyList()
-                trySend(list)
-            }
-        awaitClose { listener.remove() }
-    }
+    override fun observeTransactions(yearMonth: String): Flow<List<Transaction>> =
+        cachedAllTransactionsFlow.map { list -> list.filter { it.yearMonth == yearMonth } }
 
-    override fun observeAllTransactions(): Flow<List<Transaction>> = callbackFlow {
-        val listener = userDoc.collection("transactions")
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(Transaction::class.java) } ?: emptyList()
-                trySend(list)
-            }
-        awaitClose { listener.remove() }
-    }
+    override fun observeAllTransactions(): Flow<List<Transaction>> = cachedAllTransactionsFlow
 
     override suspend fun saveTransaction(tx: Transaction) {
         val id = if (tx.id.isBlank()) userDoc.collection("transactions").document().id else tx.id
@@ -180,14 +223,7 @@ class FirestoreFinanceRepository : FinanceRepository {
         userDoc.collection("transactions").document(txId).delete().await()
     }
 
-    override fun observeCreditCards(): Flow<List<CreditCard>> = callbackFlow {
-        val listener = userDoc.collection("credit_cards")
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(CreditCard::class.java) } ?: emptyList()
-                trySend(list)
-            }
-        awaitClose { listener.remove() }
-    }
+    override fun observeCreditCards(): Flow<List<CreditCard>> = cachedCreditCardsFlow
 
     override suspend fun saveCreditCard(card: CreditCard) {
         val id = if (card.id.isBlank()) userDoc.collection("credit_cards").document().id else card.id
@@ -235,15 +271,8 @@ class FirestoreFinanceRepository : FinanceRepository {
         userDoc.collection("recurring").document(item.id).set(toSave).await()
     }
 
-    override fun observeBudgets(yearMonth: String): Flow<List<CategoryBudget>> = callbackFlow {
-        val listener = userDoc.collection("budgets")
-            .whereEqualTo("yearMonth", yearMonth)
-            .addSnapshotListener { snapshot, _ ->
-                val list = snapshot?.documents?.mapNotNull { it.toObject(CategoryBudget::class.java) } ?: emptyList()
-                trySend(list)
-            }
-        awaitClose { listener.remove() }
-    }
+    override fun observeBudgets(yearMonth: String): Flow<List<CategoryBudget>> =
+        cachedBudgetsFlow.map { list -> list.filter { it.yearMonth == yearMonth } }
 
     override suspend fun saveBudget(budget: CategoryBudget) {
         val id = if (budget.id.isBlank()) "${budget.yearMonth}_${budget.categoryId}" else budget.id
@@ -400,6 +429,9 @@ class FirestoreFinanceRepository : FinanceRepository {
     }
 
     override suspend fun exportFullBackupData(): FullBackupPayload {
+        val cardsSnapshot = userDoc.collection("credit_cards").get().await()
+        val cardsList = cardsSnapshot.documents.mapNotNull { it.toObject(CreditCard::class.java) }
+
         return FullBackupPayload(
             version = 1,
             settings = null,
@@ -413,7 +445,7 @@ class FirestoreFinanceRepository : FinanceRepository {
             debts = emptyList(),
             debtPayments = emptyList(),
             summaries = emptyList(),
-            creditCards = emptyList()
+            creditCards = cardsList
         )
     }
 

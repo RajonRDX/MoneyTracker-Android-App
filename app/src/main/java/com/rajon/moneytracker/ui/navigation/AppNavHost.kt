@@ -1,5 +1,7 @@
 package com.rajon.moneytracker.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
@@ -11,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.rajon.moneytracker.data.di.AppContainer
+import com.rajon.moneytracker.data.di.AppViewModelProvider
 import com.rajon.moneytracker.ui.screens.auth.AuthScreen
 import com.rajon.moneytracker.ui.screens.auth.AuthViewModel
 import com.rajon.moneytracker.ui.screens.budget.BudgetScreen
@@ -93,11 +97,16 @@ fun AppNavHost(appContainer: AppContainer) {
         NavHost(
             navController = navController,
             startDestination = if (isLoggedIn) NavRoutes.HOME else NavRoutes.AUTH,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             composable(NavRoutes.AUTH) {
+                val authViewModel: AuthViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 AuthScreen(
-                    viewModel = AuthViewModel(appContainer.authRepository),
+                    viewModel = authViewModel,
                     onLoginSuccess = {
                         isLoggedIn = true
                         navController.navigate(NavRoutes.HOME) {
@@ -107,31 +116,40 @@ fun AppNavHost(appContainer: AppContainer) {
                 )
             }
             composable(NavRoutes.HOME) {
+                val homeViewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 HomeScreen(
-                    viewModel = HomeViewModel(appContainer.financeRepository),
-                    onNavigateToTransactions = { navController.navigate(NavRoutes.TRANSACTIONS) },
-                    onNavigateToBudget = { navController.navigate(NavRoutes.BUDGET) }
+                    viewModel = homeViewModel,
+                    onNavigateToTransactions = {
+                        navController.navigate(NavRoutes.TRANSACTIONS) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateToBudget = {
+                        navController.navigate(NavRoutes.BUDGET) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
             composable(NavRoutes.TRANSACTIONS) {
-                TransactionsScreen(
-                    viewModel = TransactionsViewModel(appContainer.financeRepository)
-                )
+                val txViewModel: TransactionsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                TransactionsScreen(viewModel = txViewModel)
             }
             composable(NavRoutes.CARDS) {
-                CreditCardsScreen(
-                    viewModel = CreditCardsViewModel(appContainer.financeRepository)
-                )
+                val cardsViewModel: CreditCardsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                CreditCardsScreen(viewModel = cardsViewModel)
             }
             composable(NavRoutes.BUDGET) {
-                BudgetScreen(
-                    viewModel = BudgetViewModel(appContainer.financeRepository)
-                )
+                val budgetViewModel: BudgetViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                BudgetScreen(viewModel = budgetViewModel)
             }
             composable(NavRoutes.SAVINGS) {
-                SavingsScreen(
-                    viewModel = SavingsViewModel(appContainer.financeRepository)
-                )
+                val savingsViewModel: SavingsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+                SavingsScreen(viewModel = savingsViewModel)
             }
             composable(NavRoutes.MORE) {
                 MoreScreen(
@@ -149,20 +167,23 @@ fun AppNavHost(appContainer: AppContainer) {
                 )
             }
             composable(NavRoutes.DEBTS) {
+                val debtsViewModel: DebtsViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 DebtsScreen(
-                    viewModel = DebtsViewModel(appContainer.financeRepository),
+                    viewModel = debtsViewModel,
                     onBack = { navController.popBackStack() }
                 )
             }
             composable(NavRoutes.HISTORY) {
+                val historyViewModel: HistoryViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 HistoryScreen(
-                    viewModel = HistoryViewModel(appContainer.financeRepository),
+                    viewModel = historyViewModel,
                     onBack = { navController.popBackStack() }
                 )
             }
             composable(NavRoutes.SETTINGS) {
+                val settingsViewModel: SettingsViewModel = viewModel(factory = AppViewModelProvider.Factory)
                 SettingsScreen(
-                    viewModel = SettingsViewModel(appContainer.financeRepository, appContainer.localPrefs),
+                    viewModel = settingsViewModel,
                     onBack = { navController.popBackStack() }
                 )
             }
