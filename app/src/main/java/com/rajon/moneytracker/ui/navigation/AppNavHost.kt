@@ -2,12 +2,11 @@ package com.rajon.moneytracker.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -23,6 +22,8 @@ import com.rajon.moneytracker.ui.screens.auth.AuthScreen
 import com.rajon.moneytracker.ui.screens.auth.AuthViewModel
 import com.rajon.moneytracker.ui.screens.budget.BudgetScreen
 import com.rajon.moneytracker.ui.screens.budget.BudgetViewModel
+import com.rajon.moneytracker.ui.screens.cards.CreditCardsScreen
+import com.rajon.moneytracker.ui.screens.cards.CreditCardsViewModel
 import com.rajon.moneytracker.ui.screens.debts.DebtsScreen
 import com.rajon.moneytracker.ui.screens.debts.DebtsViewModel
 import com.rajon.moneytracker.ui.screens.history.HistoryScreen
@@ -40,8 +41,8 @@ import com.rajon.moneytracker.ui.screens.transactions.TransactionsViewModel
 sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
     object Home : BottomNavItem(NavRoutes.HOME, "Home", Icons.Default.Home)
     object Transactions : BottomNavItem(NavRoutes.TRANSACTIONS, "Transactions", Icons.Default.ReceiptLong)
+    object Cards : BottomNavItem(NavRoutes.CARDS, "Credit Card", Icons.Default.CreditCard)
     object Budget : BottomNavItem(NavRoutes.BUDGET, "Budget", Icons.Default.Assessment)
-    object Savings : BottomNavItem(NavRoutes.SAVINGS, "Savings", Icons.Default.Savings)
     object More : BottomNavItem(NavRoutes.MORE, "More", Icons.Default.MoreHoriz)
 }
 
@@ -56,8 +57,8 @@ fun AppNavHost(appContainer: AppContainer) {
     val bottomNavItems = listOf(
         BottomNavItem.Home,
         BottomNavItem.Transactions,
+        BottomNavItem.Cards,
         BottomNavItem.Budget,
-        BottomNavItem.Savings,
         BottomNavItem.More
     )
 
@@ -117,6 +118,11 @@ fun AppNavHost(appContainer: AppContainer) {
                     viewModel = TransactionsViewModel(appContainer.financeRepository)
                 )
             }
+            composable(NavRoutes.CARDS) {
+                CreditCardsScreen(
+                    viewModel = CreditCardsViewModel(appContainer.financeRepository)
+                )
+            }
             composable(NavRoutes.BUDGET) {
                 BudgetScreen(
                     viewModel = BudgetViewModel(appContainer.financeRepository)
@@ -129,6 +135,7 @@ fun AppNavHost(appContainer: AppContainer) {
             }
             composable(NavRoutes.MORE) {
                 MoreScreen(
+                    onNavigateToSavings = { navController.navigate(NavRoutes.SAVINGS) },
                     onNavigateToDebts = { navController.navigate(NavRoutes.DEBTS) },
                     onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
                     onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },

@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoreScreen(
+    onNavigateToSavings: () -> Unit = {},
     onNavigateToDebts: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -30,9 +31,19 @@ fun MoreScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
+                Card(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToSavings) {
+                    ListItem(
+                        headlineContent = { Text("Savings Goals") },
+                        supportingContent = { Text("Track your target savings & deposits") },
+                        leadingContent = { Icon(Icons.Default.Savings, contentDescription = null) }
+                    )
+                }
+            }
+            item {
                 Card(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToDebts) {
                     ListItem(
-                        headlineContent = { Text("Debts & Loans Tracker") },
+                        headlineContent = { Text("Personal Debts & Loans Tracker") },
+                        supportingContent = { Text("Track money borrowed or lent to people") },
                         leadingContent = { Icon(Icons.Default.Payments, contentDescription = null) }
                     )
                 }

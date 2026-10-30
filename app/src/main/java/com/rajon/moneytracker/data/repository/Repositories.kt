@@ -32,6 +32,10 @@ interface FinanceRepository {
     suspend fun saveTransaction(tx: Transaction)
     suspend fun deleteTransaction(txId: String)
 
+    fun observeCreditCards(): Flow<List<CreditCard>>
+    suspend fun saveCreditCard(card: CreditCard)
+    suspend fun deleteCreditCard(cardId: String)
+
     fun observeRecurring(): Flow<List<RecurringPayment>>
     suspend fun saveRecurring(item: RecurringPayment)
     suspend fun deleteRecurring(id: String)

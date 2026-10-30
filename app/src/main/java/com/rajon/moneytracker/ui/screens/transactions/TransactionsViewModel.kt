@@ -18,6 +18,9 @@ class TransactionsViewModel(
     val categories: StateFlow<List<ExpenseCategory>> = financeRepository.observeCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val creditCards: StateFlow<List<CreditCard>> = financeRepository.observeCreditCards()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val transactions: StateFlow<List<Transaction>> = _currentYearMonth.flatMapLatest { ym ->
         financeRepository.observeTransactions(ym)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

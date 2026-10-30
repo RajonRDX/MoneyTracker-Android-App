@@ -2,12 +2,10 @@ package com.rajon.moneytracker.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.rajon.moneytracker.data.model.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 
 class FirebaseAuthRepository : AuthRepository {
@@ -122,7 +120,7 @@ class FirestoreFinanceRepository : FinanceRepository {
         awaitClose { listener.remove() }
     }
 
-	override suspend fun ensureDefaultCategories() {
+    override suspend fun ensureDefaultCategories() {
         val ref = userDoc.collection("categories")
         val snapshot = ref.get().await()
         if (snapshot.isEmpty) {
@@ -180,6 +178,30 @@ class FirestoreFinanceRepository : FinanceRepository {
 
     override suspend fun deleteTransaction(txId: String) {
         userDoc.collection("transactions").document(txId).delete().await()
+    }
+
+    override fun observeCreditCards(): Flow<List<CreditCard>> = callbackFlow {
+        val listener = userDoc.collection("credit_cards")
+            .addSnapshotListener { snapshot, _ ->
+                val list = snapshot?.documents?.mapNotNull { it.toObject(CreditCard::class.java) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun saveCreditCard(card: CreditCard) {
+        val id = if (card.id.isBlank()) userDoc.collection("credit_cards").document().id else card.id
+        val now = System.currentTimeMillis()
+        val toSave = card.copy(
+            id = id,
+            createdAt = if (card.createdAt == 0L) now else card.createdAt,
+            updatedAt = now
+        )
+        userDoc.collection("credit_cards").document(id).set(toSave).await()
+    }
+
+    override suspend fun deleteCreditCard(cardId: String) {
+        userDoc.collection("credit_cards").document(cardId).delete().await()
     }
 
     override fun observeRecurring(): Flow<List<RecurringPayment>> = callbackFlow {
@@ -280,7 +302,7 @@ class FirestoreFinanceRepository : FinanceRepository {
     override suspend fun addGoalDeposit(goal: SavingsGoal, deposit: SavingsDeposit) {
         val depositId = if (deposit.id.isBlank()) userDoc.collection("deposits").document().id else deposit.id
         val savedDeposit = deposit.copy(id = depositId, goalId = goal.id, updatedAt = System.currentTimeMillis())
-        
+
         val newCurrent = if (deposit.isWithdrawal) goal.currentAmount - deposit.amount else goal.currentAmount + deposit.amount
         val updatedGoal = goal.copy(currentAmount = newCurrent, updatedAt = System.currentTimeMillis())
 
@@ -341,7 +363,7 @@ class FirestoreFinanceRepository : FinanceRepository {
     override suspend fun addDebtPayment(debt: DebtItem, payment: DebtPaymentRecord, createExpenseTx: Boolean) {
         val paymentId = if (payment.id.isBlank()) userDoc.collection("debt_payments").document().id else payment.id
         val savedPayment = payment.copy(id = paymentId, debtId = debt.id, updatedAt = System.currentTimeMillis())
-        
+
         val newPaid = debt.paidAmount + payment.amount
         val newStatus = if (newPaid >= debt.totalAmount) DebtStatus.CLOSED.name else DebtStatus.ACTIVE.name
         val updatedDebt = debt.copy(paidAmount = newPaid, status = newStatus, updatedAt = System.currentTimeMillis())
@@ -374,7 +396,6 @@ class FirestoreFinanceRepository : FinanceRepository {
     }
 
     override suspend fun getSnapshotForWorker(): WorkerDataSnapshot {
-        // Implementation for background worker snapshots if needed
         return WorkerDataSnapshot(UserSettings(), emptyList(), emptyList())
     }
 
@@ -391,7 +412,8 @@ class FirestoreFinanceRepository : FinanceRepository {
             goalDeposits = emptyList(),
             debts = emptyList(),
             debtPayments = emptyList(),
-            summaries = emptyList()
+            summaries = emptyList(),
+            creditCards = emptyList()
         )
     }
 

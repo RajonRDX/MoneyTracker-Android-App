@@ -4,6 +4,7 @@ object NavRoutes {
     const val AUTH = "auth"
     const val HOME = "home"
     const val TRANSACTIONS = "transactions"
+    const val CARDS = "cards"
     const val BUDGET = "budget"
     const val SAVINGS = "savings"
     const val MORE = "more"

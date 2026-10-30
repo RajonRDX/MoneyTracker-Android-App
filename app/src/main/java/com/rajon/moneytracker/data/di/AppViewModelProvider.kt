@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.rajon.moneytracker.MoneyTrackerApp
 import com.rajon.moneytracker.ui.screens.auth.AuthViewModel
 import com.rajon.moneytracker.ui.screens.budget.BudgetViewModel
+import com.rajon.moneytracker.ui.screens.cards.CreditCardsViewModel
 import com.rajon.moneytracker.ui.screens.debts.DebtsViewModel
 import com.rajon.moneytracker.ui.screens.home.HomeViewModel
 import com.rajon.moneytracker.ui.screens.history.HistoryViewModel
@@ -28,6 +29,8 @@ object AppViewModelProvider {
                     HomeViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(TransactionsViewModel::class.java) ->
                     TransactionsViewModel(container.financeRepository) as T
+                modelClass.isAssignableFrom(CreditCardsViewModel::class.java) ->
+                    CreditCardsViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(BudgetViewModel::class.java) ->
                     BudgetViewModel(container.financeRepository) as T
                 modelClass.isAssignableFrom(SavingsViewModel::class.java) ->

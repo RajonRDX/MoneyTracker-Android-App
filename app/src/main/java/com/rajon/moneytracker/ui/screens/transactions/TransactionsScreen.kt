@@ -17,13 +17,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rajon.moneytracker.data.di.AppViewModelProvider
+import com.rajon.moneytracker.data.model.CreditCard
 import com.rajon.moneytracker.data.model.ExpenseCategory
 import com.rajon.moneytracker.data.model.PaymentSource
 import com.rajon.moneytracker.data.model.Transaction
@@ -45,6 +45,7 @@ fun TransactionsScreen(
     val currentYM by viewModel.currentYearMonth.collectAsStateWithLifecycle()
     val transactions by viewModel.transactions.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val creditCards by viewModel.creditCards.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingTx by remember { mutableStateOf<Transaction?>(null) }
@@ -55,11 +56,16 @@ fun TransactionsScreen(
     val filteredTransactions = remember(transactions, searchQuery, selectedFilter) {
         transactions
             .filter { tx ->
-                val matchesType = selectedFilter == "ALL" || tx.type == selectedFilter
+                val matchesType = when (selectedFilter) {
+                    "ALL" -> true
+                    "CARD" -> tx.paymentSource == PaymentSource.CARD.name || tx.type == TransactionType.CARD_LOAN.name || tx.type == TransactionType.CARD_PAYMENT.name || tx.isCardBillPayment
+                    else -> tx.type == selectedFilter
+                }
                 val matchesQuery = searchQuery.isBlank() ||
                     tx.note.contains(searchQuery, ignoreCase = true) ||
                     tx.categoryName.contains(searchQuery, ignoreCase = true) ||
-                    tx.paymentSource.contains(searchQuery, ignoreCase = true)
+                    tx.paymentSource.contains(searchQuery, ignoreCase = true) ||
+                    tx.linkedCardName.contains(searchQuery, ignoreCase = true)
                 matchesType && matchesQuery
             }
             .sortedByDescending { it.dateMillis }
@@ -93,7 +99,7 @@ fun TransactionsScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search food, bills, withdrawal, source...") },
+                placeholder = { Text("Search food, bills, card, withdrawal...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
@@ -110,7 +116,13 @@ fun TransactionsScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val filters = listOf("ALL" to "All", "EXPENSE" to "Expenses", "INCOME" to "Income", "WITHDRAWAL" to "Withdrawals")
+                val filters = listOf(
+                    "ALL" to "All",
+                    "EXPENSE" to "Expenses",
+                    "INCOME" to "Income",
+                    "WITHDRAWAL" to "Withdrawals",
+                    "CARD" to "Card Activity"
+                )
                 items(filters) { (key, label) ->
                     FilterChip(
                         selected = selectedFilter == key,
@@ -166,6 +178,7 @@ fun TransactionsScreen(
         AddEditTransactionSheet(
             transaction = editingTx,
             categories = categories,
+            creditCards = creditCards,
             currentYearMonth = currentYM,
             onDismiss = {
                 showAddDialog = false
@@ -217,23 +230,33 @@ fun TransactionItemCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val isIncome = tx.type == TransactionType.INCOME.name
+    val isIncome = tx.type == TransactionType.INCOME.name || tx.type == TransactionType.CARD_LOAN.name
     val isWithdrawal = tx.type == TransactionType.WITHDRAWAL.name
+    val isCardPayment = tx.type == TransactionType.CARD_PAYMENT.name || tx.isCardBillPayment
 
     val badgeColor = when {
         isIncome -> GreenSuccess
-        isWithdrawal -> BlueInfo
+        isWithdrawal || isCardPayment -> BlueInfo
         tx.isExtra -> OrangeWarning
         else -> RedError
     }
 
     val icon = when {
+        tx.type == TransactionType.CARD_LOAN.name -> Icons.Default.RequestQuote
+        isCardPayment -> Icons.Default.CreditScore
+        tx.paymentSource == PaymentSource.CARD.name -> Icons.Default.CreditCard
         isIncome -> Icons.Default.TrendingUp
         isWithdrawal -> Icons.Default.Atm
         tx.categoryName.contains("Food", true) -> Icons.Default.Restaurant
         tx.categoryName.contains("Transport", true) -> Icons.Default.DirectionsCar
         tx.categoryName.contains("Shopping", true) -> Icons.Default.ShoppingBag
         else -> Icons.Default.Receipt
+    }
+
+    val sourceLabel = if (tx.linkedCardName.isNotBlank()) {
+        "${tx.paymentSource} (${tx.linkedCardName})"
+    } else {
+        tx.paymentSource
     }
 
     Card(
@@ -272,7 +295,7 @@ fun TransactionItemCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${tx.categoryName.ifBlank { tx.type }} • ${tx.paymentSource} • ${Formatters.formatDate(tx.dateMillis)}",
+                    text = "${tx.categoryName.ifBlank { tx.type }} • $sourceLabel • ${Formatters.formatDate(tx.dateMillis)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -318,6 +341,7 @@ fun TransactionItemCard(
 fun AddEditTransactionSheet(
     transaction: Transaction?,
     categories: List<ExpenseCategory>,
+    creditCards: List<CreditCard> = emptyList(),
     currentYearMonth: String,
     initialType: String = TransactionType.EXPENSE.name,
     onDismiss: () -> Unit,
@@ -331,6 +355,10 @@ fun AddEditTransactionSheet(
         mutableStateOf(
             transaction?.paymentSource ?: if (selectedType == TransactionType.WITHDRAWAL.name) PaymentSource.BANK.name else PaymentSource.CASH.name
         )
+    }
+
+    var selectedCardId by remember {
+        mutableStateOf(transaction?.linkedCardId ?: creditCards.firstOrNull()?.id)
     }
 
     val defaultCatId = categories.firstOrNull { it.name.contains("Food", ignoreCase = true) }?.id
@@ -373,7 +401,7 @@ fun AddEditTransactionSheet(
                 }
             }
 
-            // Transaction Type Selector (High-contrast FilterChips)
+            // Transaction Type Selector
             Text("Transaction Type", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val types = listOf(
@@ -456,12 +484,48 @@ fun AddEditTransactionSheet(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                val availableSources = if (selectedType == TransactionType.INCOME.name) {
+                    PaymentSource.values().filter { it != PaymentSource.CARD }
+                } else {
+                    PaymentSource.values().toList()
+                }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(PaymentSource.values().toList()) { source ->
+                    items(availableSources) { source ->
                         FilterChip(
                             selected = selectedSource == source.name,
-                            onClick = { selectedSource = source.name },
+                            onClick = {
+                                selectedSource = source.name
+                                if (source == PaymentSource.CARD && selectedCardId == null) {
+                                    selectedCardId = creditCards.firstOrNull()?.id
+                                }
+                            },
                             label = { Text(source.displayName) }
+                        )
+                    }
+                }
+
+                // If Paid Via == CARD, let the user choose which Credit Card they used
+                if (selectedType == TransactionType.EXPENSE.name && selectedSource == PaymentSource.CARD.name) {
+                    if (creditCards.isNotEmpty()) {
+                        Text(
+                            text = "Select Credit Card (Adds to Card Debt)",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(creditCards) { card ->
+                                FilterChip(
+                                    selected = selectedCardId == card.id,
+                                    onClick = { selectedCardId = card.id },
+                                    label = { Text("${card.bankName} ${card.cardName}") }
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "Tip: Add your card in the 'Credit Card' tab to track its billing date & limit.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OrangeWarning
                         )
                     }
                 }
@@ -504,6 +568,8 @@ fun AddEditTransactionSheet(
                     }
 
                     val resolvedNote = note.ifBlank { resolvedCatName }
+                    val isCardSwipe = selectedType == TransactionType.EXPENSE.name && selectedSource == PaymentSource.CARD.name
+                    val chosenCard = if (isCardSwipe) creditCards.find { it.id == selectedCardId } else null
 
                     onSave(
                         (transaction ?: Transaction(id = UUID.randomUUID().toString(), createdAt = System.currentTimeMillis())).copy(
@@ -515,6 +581,8 @@ fun AddEditTransactionSheet(
                             categoryName = resolvedCatName,
                             note = resolvedNote,
                             isExtra = if (selectedType == TransactionType.EXPENSE.name) isExtra else false,
+                            linkedCardId = chosenCard?.id,
+                            linkedCardName = if (chosenCard != null) "${chosenCard.bankName} ${chosenCard.cardName}".trim() else "",
                             dateMillis = transaction?.dateMillis ?: System.currentTimeMillis()
                         )
                     )

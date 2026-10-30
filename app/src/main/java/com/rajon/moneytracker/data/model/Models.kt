@@ -3,7 +3,7 @@ package com.rajon.moneytracker.data.model
 import java.io.Serializable
 
 enum class TransactionType {
-    EXPENSE, INCOME, WITHDRAWAL
+    EXPENSE, INCOME, WITHDRAWAL, CARD_LOAN, CARD_PAYMENT
 }
 
 enum class PaymentSource(val displayName: String) {
@@ -78,6 +78,25 @@ data class Transaction(
     val isOneOffBill: Boolean = false,
     val linkedRecurringId: String? = null,
     val linkedDebtId: String? = null,
+    val linkedCardId: String? = null,
+    val linkedCardName: String = "",
+    val isCardBillPayment: Boolean = false,
+    val emiMonths: Int = 1,
+    val cardLoanPrincipal: Double = 0.0,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+) : Serializable
+
+data class CreditCard(
+    val id: String = "",
+    val cardName: String = "",
+    val bankName: String = "",
+    val lastFourDigits: String = "",
+    val creditLimit: Double = 0.0,
+    val previousDebt: Double = 0.0,
+    val statementDay: Int = 15,
+    val paymentDueDay: Int = 5,
+    val minimumDuePercent: Double = 5.0,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L
 ) : Serializable
@@ -210,5 +229,6 @@ data class FullBackupPayload(
     val goalDeposits: List<SavingsDeposit>,
     val debts: List<DebtItem>,
     val debtPayments: List<DebtPaymentRecord>,
-    val summaries: List<MonthlySummary>
+    val summaries: List<MonthlySummary>,
+    val creditCards: List<CreditCard> = emptyList()
 ) : Serializable
